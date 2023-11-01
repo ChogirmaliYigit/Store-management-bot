@@ -5,7 +5,7 @@ from aiogram.types import Message
 
 
 class ThrottlingMiddleware(BaseMiddleware):
-    def __init__(self, slow_mode_delay=0.5):
+    def __init__(self, slow_mode_delay=0.2):
         self.user_timeouts = {}
         self.slow_mode_delay = slow_mode_delay
         super(ThrottlingMiddleware, self).__init__()

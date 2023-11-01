@@ -1,4 +1,5 @@
 from typing import Union
+from datetime import datetime
 
 import asyncpg
 from asyncpg import Connection
@@ -42,17 +43,6 @@ class Database:
                     result = await connection.execute(command, *args)
             return result
 
-    async def create_table_users(self):
-        sql = """
-        CREATE TABLE IF NOT EXISTS Users (
-        id SERIAL PRIMARY KEY,
-        full_name VARCHAR(255) NOT NULL,
-        username varchar(255) NULL,
-        telegram_id BIGINT NOT NULL UNIQUE
-        );
-        """
-        await self.execute(sql, execute=True)
-
     @staticmethod
     def format_args(sql, parameters: dict):
         sql += " AND ".join(
@@ -61,8 +51,49 @@ class Database:
         return sql, tuple(parameters.values())
 
     async def add_user(self, full_name, username, telegram_id):
-        sql = "INSERT INTO users (full_name, username, telegram_id) VALUES($1, $2, $3) returning *"
-        return await self.execute(sql, full_name, username, telegram_id, fetchrow=True)
+        sql = "INSERT INTO users (full_name, username, telegram_id, created_at) VALUES($1, $2, $3, $4) returning *"
+        return await self.execute(sql, full_name, username, telegram_id, datetime.now(), fetchrow=True)
+
+    async def add_order(self, area, client_name, client_phone_number, client_products, client_products_images,
+                        client_products_wrapping_type, client_wrapped_products_images, client_products_price,
+                        client_products_payment_status, client_social_network, employee, delivery_date, location,
+                        delivery_type, note, is_sent=True):
+        sql = """INSERT INTO orders (
+            area, client_name, client_phone_number, client_products, client_products_images,
+            client_products_wrapping_type, client_wrapped_products_images, client_products_price,
+            client_products_payment_status, client_social_network, employee, delivery_date, location,
+            delivery_type, note, is_sent, created_at
+        ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+        ) returning *"""
+        return await self.execute(sql, area, client_name, client_phone_number, client_products,
+                                  client_products_images, client_products_wrapping_type, client_wrapped_products_images,
+                                  client_products_price, client_products_payment_status, client_social_network,
+                                  employee, delivery_date, location, delivery_type, note, is_sent, datetime.now(),
+                                  fetchrow=True)
+
+    async def add_chat(self, chat_id, chat_type):
+        sql = "INSERT INTO chats (chat_id, type) VALUES ($1, $2) returning *"
+        return await self.execute(sql, chat_id, chat_type, fetchrow=True)
+
+    async def select_chat(self, **kwargs):
+        sql = "SELECT * FROM chats WHERE "
+        sql, parameters = self.format_args(sql, parameters=kwargs)
+        return await self.execute(sql, *parameters, fetchrow=True)
+
+    async def select_all_chats(self):
+        sql = "SELECT * FROM Chats"
+        return await self.execute(sql, fetch=True)
+
+    async def count_order_ids(self):
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        sql = "SELECT COUNT(id) FROM orders WHERE created_at >= $1"
+        return await self.execute(sql, today_start, fetchval=True)
+
+    async def select_orders(self):
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        sql = "SELECT * FROM orders WHERE created_at >= $1"
+        return await self.execute(sql, today_start, fetch=True)
 
     async def select_all_users(self):
         sql = "SELECT * FROM Users"

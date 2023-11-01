@@ -1,1 +1,1 @@
-from .test import Test, AdminState
+from .states import UserState, AdminState

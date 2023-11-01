@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.middlewares.request_logging import logger
 from loader import db
+from utils.extra_datas import scheduler
 
 
 def setup_handlers(dispatcher: Dispatcher) -> None:
@@ -15,9 +16,9 @@ def setup_handlers(dispatcher: Dispatcher) -> None:
 def setup_middlewares(dispatcher: Dispatcher, bot: Bot) -> None:
     """MIDDLEWARE"""
     from middlewares.throttling import ThrottlingMiddleware
-
-    # Spamdan himoya qilish uchun klassik ichki o'rta dastur. So'rovlar orasidagi asosiy vaqtlar 0,5 soniya
-    dispatcher.message.middleware(ThrottlingMiddleware(slow_mode_delay=0.5))
+    #
+    # # Spamdan himoya qilish uchun klassik ichki o'rta dastur. So'rovlar orasidagi asosiy vaqtlar 0,5 soniya
+    # dispatcher.message.middleware(ThrottlingMiddleware(slow_mode_delay=0.5))
 
 
 def setup_filters(dispatcher: Dispatcher) -> None:
@@ -26,7 +27,7 @@ def setup_filters(dispatcher: Dispatcher) -> None:
 
     # Chat turini aniqlash uchun klassik umumiy filtr
     # Filtrni handlers/users/__init__ -dagi har bir routerga alohida o'rnatish mumkin
-    dispatcher.message.filter(ChatPrivateFilter(chat_type=["private"]))
+    # dispatcher.message.filter(ChatPrivateFilter(chat_type=["private"]))
 
 
 async def setup_aiogram(dispatcher: Dispatcher, bot: Bot) -> None:
@@ -38,10 +39,7 @@ async def setup_aiogram(dispatcher: Dispatcher, bot: Bot) -> None:
 
 
 async def database_connected():
-    # Ma'lumotlar bazasini yaratamiz:
     await db.create()
-    # await db.drop_users()
-    await db.create_table_users()
 
 
 async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot) -> None:
@@ -77,6 +75,7 @@ def main():
     dispatcher.startup.register(aiogram_on_startup_polling)
     dispatcher.shutdown.register(aiogram_on_shutdown_polling)
     asyncio.run(dispatcher.start_polling(bot, close_bot_session=True))
+    asyncio.create_task(scheduler())
     # allowed_updates=['message', 'chat_member']
 
 
