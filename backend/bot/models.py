@@ -42,13 +42,13 @@ class Orders(models.Model):
 
 class Chats(models.Model):
     CHANNEL = "channel"
-    TASHKENT_GROUP = "tashkent_group"
-    REGIONS_GROUP = "regions_group"
+    TASHKENT_GROUP = "tashkent_channel"
+    REGIONS_GROUP = "regions_channel"
 
     CHAT_TYPES = (
         (CHANNEL, "Kanal"),
-        (TASHKENT_GROUP, "Toshkent uchun guruh"),
-        (REGIONS_GROUP, "Viloyatlar uchun guruh"),
+        (TASHKENT_GROUP, "Toshkent uchun kanal"),
+        (REGIONS_GROUP, "Viloyatlar uchun kanal"),
     )
 
     chat_id = models.BigIntegerField()

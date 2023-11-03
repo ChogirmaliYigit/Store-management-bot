@@ -178,7 +178,7 @@ async def get_note(message: types.Message, state: FSMContext):
         await state.update_data({"note": message.text})
     state_content = await get_state_content(state)
     message_to_forward = await message.answer(state_content, reply_markup=agree_order_data_markup,
-                                          disable_web_page_preview=True)
+                                              disable_web_page_preview=True)
     await state.update_data({'message_id_to_forward': message_to_forward.message_id})
     await state.set_state(UserState.agree_order_data)
 
@@ -188,19 +188,19 @@ async def ask_agree_order_data(message: types.Message, state: FSMContext):
     if message.text == "Tasdiqlash ✅":
         data = await state.get_data()
         await save_state_content(state)
-        group = None
+        channel = None
         if data.get("area") == "Toshkent shahar bo'ylab":
-            group = await db.select_chat(type="tashkent_group")
+            channel = await db.select_chat(type="tashkent_channel")
         elif data.get("area") == "Viloyatlarga":
-            group = await db.select_chat(type="regions_group")
+            channel = await db.select_chat(type="regions_channel")
         try:
-            await bot.forward_message(group.get('chat_id'), from_chat_id=message.chat.id,
+            await bot.forward_message(channel.get('chat_id'), from_chat_id=message.chat.id,
                                       message_id=data.get('message_id_to_forward'))
-            await message.answer("Buyurtma guruhga yuborildi ✅")
+            await message.answer("Buyurtma kanalga yuborildi ✅")
         except Exception as error:
-            logging.error(f"An error occurred while sending order data to the group({group.get('chat_id')}). "
+            logging.error(f"An error occurred while sending order data to the channel ({channel.get('chat_id')}). "
                           f"Error: {error}")
-            await message.answer("Guruhga yuborishda muammo tug'ildi ❌")
+            await message.answer("Kanalga yuborishda muammo tug'ildi ❌")
         await state.clear()
     await message.answer(f"Yo'nalishlardan birini tanlang 👇", reply_markup=area_markup)
     await state.set_state(UserState.area)

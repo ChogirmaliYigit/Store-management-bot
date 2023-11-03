@@ -1,3 +1,4 @@
+import logging
 from typing import Union
 from datetime import datetime
 
@@ -114,6 +115,12 @@ class Database:
 
     async def delete_users(self):
         await self.execute("DELETE FROM Users WHERE TRUE", execute=True)
+
+    async def delete_groups(self):
+        try:
+            await self.execute("DELETE FROM chats WHERE chat_type=tashkent_group AND chat_type=regions_group")
+        except Exception as err:
+            logging.error(err)
 
     async def drop_users(self):
         await self.execute("DROP TABLE Users", execute=True)
