@@ -197,8 +197,9 @@ async def ask_agree_order_data(message: types.Message, state: FSMContext):
         try:
             msg = await bot.forward_message(channel.get('chat_id'), from_chat_id=message.chat.id,
                                             message_id=data.get('message_id_to_forward'))
-            await bot.send_location(channel.get("chat_id"), latitude=data.get("latitude"),
-                                    longitude=data.get("longitude"), reply_to_message_id=msg.message_id)
+            if data.get("latitude") and data.get("longitude"):
+                await bot.send_location(channel.get("chat_id"), latitude=data.get("latitude"),
+                                        longitude=data.get("longitude"), reply_to_message_id=msg.message_id)
             await message.answer("Buyurtma kanalga yuborildi ✅")
         except Exception as error:
             logging.error(f"An error occurred while sending order data to the channel ({channel.get('chat_id')}). "
