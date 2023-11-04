@@ -58,20 +58,20 @@ class Database:
     async def add_order(self, area, client_name, client_phone_number, client_products, client_products_images,
                         client_products_wrapping_type, client_wrapped_products_images, client_products_price,
                         client_products_payment_status, client_social_network, employee, delivery_date, location,
-                        delivery_type, note, is_sent=True):
+                        delivery_type, note, latitude, longitude, is_sent=True):
         sql = """INSERT INTO orders (
             area, client_name, client_phone_number, client_products, client_products_images,
             client_products_wrapping_type, client_wrapped_products_images, client_products_price,
             client_products_payment_status, client_social_network, employee, delivery_date, location,
-            delivery_type, note, is_sent, created_at
+            delivery_type, note, is_sent, latitude, longitude, created_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
         ) returning *"""
         return await self.execute(sql, area, client_name, client_phone_number, client_products,
                                   client_products_images, client_products_wrapping_type, client_wrapped_products_images,
                                   client_products_price, client_products_payment_status, client_social_network,
-                                  employee, delivery_date, location, delivery_type, note, is_sent, datetime.now(),
-                                  fetchrow=True)
+                                  employee, delivery_date, location, delivery_type, note, is_sent, latitude, longitude,
+                                  datetime.now(), fetchrow=True)
 
     async def add_chat(self, chat_id, chat_type):
         sql = "INSERT INTO chats (chat_id, type) VALUES ($1, $2) returning *"
@@ -118,7 +118,10 @@ class Database:
 
     async def delete_groups(self):
         try:
-            await self.execute("DELETE FROM chats WHERE chat_type=tashkent_group AND chat_type=regions_group")
+            await self.execute("DELETE FROM chats WHERE type=tashkent_group",
+                               execute=True)
+            await self.execute("DELETE FROM chats WHERE type=regions_group",
+                               execute=True)
         except Exception as err:
             logging.error(err)
 

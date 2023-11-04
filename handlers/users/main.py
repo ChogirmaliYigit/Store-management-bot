@@ -137,6 +137,7 @@ async def get_delivery_date(message: types.Message, state: FSMContext):
 @router.message(UserState.location)
 async def get_location(message: types.Message, state: FSMContext):
     if message.content_type == ContentType.LOCATION:
+        await state.update_data({"longitude": message.location.longitude, "latitude": message.location.latitude})
         location = get_address_by_location(message.location.latitude, message.location.longitude)
     else:
         location = message.text
@@ -194,13 +195,15 @@ async def ask_agree_order_data(message: types.Message, state: FSMContext):
         elif data.get("area") == "Viloyatlarga":
             channel = await db.select_chat(type="regions_channel")
         try:
-            await bot.forward_message(channel.get('chat_id'), from_chat_id=message.chat.id,
-                                      message_id=data.get('message_id_to_forward'))
+            msg = await bot.forward_message(channel.get('chat_id'), from_chat_id=message.chat.id,
+                                            message_id=data.get('message_id_to_forward'))
+            await bot.send_location(channel.get("chat_id"), latitude=data.get("latitude"),
+                                    longitude=data.get("longitude"), reply_to_message_id=msg.message_id)
             await message.answer("Buyurtma kanalga yuborildi ✅")
         except Exception as error:
             logging.error(f"An error occurred while sending order data to the channel ({channel.get('chat_id')}). "
                           f"Error: {error}")
             await message.answer("Kanalga yuborishda muammo tug'ildi ❌")
-        await state.clear()
+    await state.clear()
     await message.answer(f"Yo'nalishlardan birini tanlang 👇", reply_markup=area_markup)
     await state.set_state(UserState.area)

@@ -1,15 +1,22 @@
 import datetime
+import logging
 import ssl
+import json
 import asyncio
 import certifi
+import gspread
+import pygsheets
+import pandas as pd
 import aioschedule
 
-from data.config import ADMINS
-from loader import db, bot
-from geopy.geocoders import Nominatim
 from aiogram import types
-from aiogram.fsm.context import FSMContext
+from loader import db, bot
+from data.config import ADMINS
+from geopy.geocoders import Nominatim
 from .pgtoexcel import export_to_excel
+from aiogram.fsm.context import FSMContext
+from openpyxl.worksheet.datavalidation import DataValidation
+from oauth2client.service_account import ServiceAccountCredentials
 
 escape_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
 
@@ -47,6 +54,8 @@ async def save_state_content(state: FSMContext):
     employee = data.get("employee")
     delivery_date = data.get("delivery_date")
     location = data.get("location")
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
     delivery_type = data.get("delivery_type")
     note = data.get("note")
 
@@ -66,6 +75,8 @@ async def save_state_content(state: FSMContext):
         location=location,
         delivery_type=delivery_type,
         note=note,
+        latitude=latitude,
+        longitude=longitude,
     )
     return order
 
@@ -121,49 +132,45 @@ def get_emoji_for_number(number: str):
     return string_numbers.get(number)
 
 
+def make_dropdown(spreadsheet, cell, options):
+    data_validation = DataValidation(type="list", formula1='"{}"'.format(','.join(options)))
+
+    # Add the data validation to the specified range
+    spreadsheet.add_data_validation(data_validation)
+    spreadsheet.data_validations.add(cell, data_validation)
+
+    # Optionally, set a prompt for the cell
+    data_validation.prompt = "Choose from the list"
+    data_validation.promptTitle = "Dropdown Selection"
+
+
 async def write_orders_to_sheets():
     orders = await db.select_orders()
-    month = datetime.datetime.now().month
-    year = datetime.datetime.now().year
-    file_path = f"data/{month}-{year}.xlsx"
-    headings = [
-        "Sana",
-        "Ism familiya",
-        "Telefon raqami",
-        "Kitoblar nomi",
-        "Manzili",
-        "Yetkazib berish turi",
-        "To'lov summasi",
-        "Ijtimoiy tarmoq",
-        "Ta'minotchiga yuborildi",
+    today = datetime.datetime.now().strftime("%m-%Y")
+
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
+    scope = [
+        "https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive",
     ]
-    data = []
+    credentials = ServiceAccountCredentials.from_json_keyfile_name("google_credentials.json", scope)
+    client = gspread.authorize(credentials)
+    spreadsheet = client.open_by_url(spreadsheet_url)
+    spreadsheet.del_worksheet(spreadsheet.worksheet(today))
+    worksheets = spreadsheet.worksheets()
+    last_sheet = worksheets[-1]
+    new_sheet = last_sheet.duplicate(new_sheet_name=today)
+    start_index = 2
     for order in orders:
-        data.append([
-            order.get("created_at").strftime("%d-%m-%Y"),
-            order.get("client_name"),
-            order.get("client_phone_number"),
-            order.get("client_products"),
-            order.get("location") if order.get("location") else "Mavjud emas",
-            order.get("delivery_type"),
-            order.get("client_products_price"),
-            order.get("client_social_network"),
-            "Ha" if order.get("is_sent") else "Yo'q",
-        ])
-    await export_to_excel(data=data, headings=headings, filepath=file_path)
-
-    await bot.send_document(ADMINS[1], types.input_file.FSInputFile(file_path))
-
-    # spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
-    # scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # credential = ServiceAccountCredentials.from_json_keyfile_name("google_credentials.json", scope)
-    # client = gspread.authorize(credential)
-    # spreadsheet = client.open_by_url(spreadsheet_url)
-    # last_sheet = spreadsheet.worksheets()[-1]
-    # today = datetime.datetime.now().strftime("%m-%Y")
-    # sheet = spreadsheet.duplicate_sheet(last_sheet.id, new_sheet_name=str(today))
-    # sheet.append_row([])
-    # print(sheet)
+        new_sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
+        new_sheet.update(f"B{start_index}", order.get("client_name"))
+        new_sheet.update(f"C{start_index}", order.get("client_phone_number"))
+        new_sheet.update(f"D{start_index}", order.get("client_products"))
+        new_sheet.update(f"F{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+        new_sheet.update(f"G{start_index}", order.get("delivery_type"))
+        new_sheet.update(f"H{start_index}", order.get("client_products_price"))
+        new_sheet.update(f"I{start_index}", order.get("client_social_network"))
+        start_index += 1
 
 
 async def scheduler():

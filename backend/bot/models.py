@@ -31,6 +31,8 @@ class Orders(models.Model):
     delivery_type = models.CharField(max_length=300, null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     is_sent = models.BooleanField(default=True)
+    latitude = models.BigIntegerField(null=True, blank=True)
+    longitude = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
