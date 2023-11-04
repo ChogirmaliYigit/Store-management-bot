@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.middlewares.request_logging import logger
 from loader import db
-from utils.extra_datas import scheduler, write_orders_to_sheets
+from utils.extra_datas import scheduler
 
 
 def setup_handlers(dispatcher: Dispatcher) -> None:
@@ -50,7 +50,6 @@ async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot) -> None:
     logger.info("Database connected")
     await database_connected()
 
-    await write_orders_to_sheets()
     logger.info("Starting polling")
     await bot.delete_webhook(drop_pending_updates=True)
     await setup_aiogram(bot=bot, dispatcher=dispatcher)
