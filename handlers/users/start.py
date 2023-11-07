@@ -9,7 +9,7 @@ from loader import db, bot
 from data.config import ADMINS
 from utils.extra_datas import make_title
 from keyboards.reply.buttons import area_markup
-from states.states import UserState
+from states.states import UserState, AnonymousUserState
 
 router = Router()
 
@@ -39,7 +39,8 @@ async def do_start(message: types.Message, state: FSMContext):
         logger.info(error)
     if user:
         count = await db.count_users()
-        msg = (f"[{make_title(user['full_name'])}](tg://user?id={user['telegram_id']}) bazaga qo'shildi\.\nBazada {count} ta foydalanuvchi bor\.")
+        msg = (f"[{make_title(user['full_name'])}](tg://user?id={user['telegram_id']}) bazaga qo'shildi\."
+               f"\nBazada {count} ta foydalanuvchi bor\.")
     else:
         msg = f"[{make_title(full_name)}](tg://user?id={telegram_id}) bazaga oldin qo'shilgan"
     for admin in ADMINS:
@@ -51,5 +52,36 @@ async def do_start(message: types.Message, state: FSMContext):
             )
         except Exception as error:
             logger.info(f"Data did not send to admin: {admin}. Error: {error}")
-    await message.answer(f"Yo'nalishlardan birini tanlang 👇", reply_markup=area_markup)
-    await state.set_state(UserState.area)
+    user = await db.user_is_admin(int(telegram_id))
+    admin = await db.get_admin(int(telegram_id))
+    if str(telegram_id) in ADMINS or admin.get("is_active"):
+        await message.answer(f"Yo'nalishlardan birini tanlang 👇", reply_markup=area_markup)
+        await state.set_state(UserState.area)
+    elif user:
+        await message.answer("Login kiriting:")
+        await state.set_state(AnonymousUserState.get_login)
+
+
+@router.message(AnonymousUserState.get_login)
+async def get_login(message: types.Message, state: FSMContext):
+    login = await db.check_login(message.text)
+    if login:
+        await state.update_data({"anonymous_login": message.text})
+        await message.answer("Endi parolni kiriting:")
+        await state.set_state(AnonymousUserState.get_password)
+    else:
+        await message.answer("Noto'g'ri login! Qayta kiriting:")
+
+
+@router.message(AnonymousUserState.get_password)
+async def get_password(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    login = data.get("anonymous_login")
+    password = message.text
+    user = await db.get_admin(int(message.from_user.id))
+    if user.get("login") == login and user.get("password") == password:
+        await db.activate_user(int(message.from_user.id))
+        await message.answer(f"Yo'nalishlardan birini tanlang 👇", reply_markup=area_markup)
+        await state.set_state(UserState.area)
+    else:
+        await message.answer("Login va parol mos kelmadi!")

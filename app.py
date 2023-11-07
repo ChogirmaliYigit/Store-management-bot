@@ -16,9 +16,12 @@ def setup_handlers(dispatcher: Dispatcher) -> None:
 def setup_middlewares(dispatcher: Dispatcher, bot: Bot) -> None:
     """MIDDLEWARE"""
     from middlewares.throttling import ThrottlingMiddleware
+    from middlewares.admin import AdminMiddleware
+
     #
     # # Spamdan himoya qilish uchun klassik ichki o'rta dastur. So'rovlar orasidagi asosiy vaqtlar 0,5 soniya
     # dispatcher.message.middleware(ThrottlingMiddleware(slow_mode_delay=0.5))
+    dispatcher.message.middleware(AdminMiddleware())
 
 
 def setup_filters(dispatcher: Dispatcher) -> None:

@@ -1,30 +1,22 @@
 import datetime
-import logging
 import ssl
-import json
 import asyncio
 import certifi
 import gspread
-import pygsheets
-import pandas as pd
 import aioschedule
 
-from aiogram import types
-from loader import db, bot
-from data.config import ADMINS
+from loader import db
 from geopy.geocoders import Nominatim
-from .pgtoexcel import export_to_excel
 from aiogram.fsm.context import FSMContext
-from openpyxl.worksheet.datavalidation import DataValidation
 from oauth2client.service_account import ServiceAccountCredentials
 
-escape_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+ESCAPE_CHARS_MARKDOWN = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
 
 
 def make_title(title):
     name = ""
     for letter in title:
-        if letter in escape_chars:
+        if letter in ESCAPE_CHARS_MARKDOWN:
             name += f'\{letter}'
         else:
             name += letter
@@ -98,10 +90,14 @@ async def get_state_content(state: FSMContext):
     if order.get('client_products_wrapping_type'):
         content += f"🎁 O'rab berish turi: {order.get('client_products_wrapping_type')}\n"
 
-    content += (f"💲 To'lov qiymati: {order.get('client_products_price')}\n"
-                f"💲 To'lov holati: {order.get('client_products_payment_status')}\n"
-                f"🤝 Buyurtma oluvchi: {order.get('employee')}\n"
+    content += f"💲 To'lov qiymati: {order.get('client_products_price')}\n"
+
+    if order.get('client_products_payment_status'):
+        content += f"💲 To'lov holati: {order.get('client_products_payment_status')}\n"
+
+    content += (f"🤝 Buyurtma oluvchi: {order.get('employee')}\n"
                 f"📅 Yetkazib berish muddati: {order.get('delivery_date')}\n")
+
     if order.get('delivery_type'):
         content += f"🚖 Yetkazib berish turi:⁉️ {order.get('delivery_type')}\n"
     if order.get('location'):
@@ -130,18 +126,6 @@ def get_emoji_for_number(number: str):
         "9": "9️⃣",
     }
     return string_numbers.get(number)
-
-
-def make_dropdown(spreadsheet, cell, options):
-    data_validation = DataValidation(type="list", formula1='"{}"'.format(','.join(options)))
-
-    # Add the data validation to the specified range
-    spreadsheet.add_data_validation(data_validation)
-    spreadsheet.data_validations.add(cell, data_validation)
-
-    # Optionally, set a prompt for the cell
-    data_validation.prompt = "Choose from the list"
-    data_validation.promptTitle = "Dropdown Selection"
 
 
 async def write_orders_to_sheets():

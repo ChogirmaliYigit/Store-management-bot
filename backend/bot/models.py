@@ -61,3 +61,13 @@ class Chats(models.Model):
 
     class Meta:
         db_table = "chats"
+
+
+class Admin(models.Model):
+    login = models.CharField(max_length=500, unique=True)
+    password = models.CharField(max_length=500)
+    telegram_id = models.BigIntegerField(unique=True)
+    is_active = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "bot_admins"

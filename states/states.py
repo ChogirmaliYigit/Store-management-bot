@@ -24,3 +24,12 @@ class UserState(StatesGroup):
 class AdminState(StatesGroup):
     are_you_sure = State()
     ask_ad_content = State()
+    admins = State()
+    admins_get_login = State()
+    admins_get_password = State()
+    admins_get_telegram_id = State()
+
+
+class AnonymousUserState(StatesGroup):
+    get_login = State()
+    get_password = State()

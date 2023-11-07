@@ -30,7 +30,7 @@ class Database:
         fetchrow: bool = False,
         execute: bool = False,
     ):
-        
+
         async with self.pool.acquire() as connection:
             connection: Connection
             async with connection.transaction():
@@ -77,6 +77,10 @@ class Database:
         sql = "INSERT INTO chats (chat_id, type) VALUES ($1, $2) returning *"
         return await self.execute(sql, chat_id, chat_type, fetchrow=True)
 
+    async def add_admin(self, login, password, telegram_id, is_active=False):
+        sql = "INSERT INTO bot_admins (login, password, telegram_id, is_active) VALUES ($1, $2, $3, $4) returning *"
+        return await self.execute(sql, login, password, telegram_id, is_active, fetchrow=True)
+
     async def select_chat(self, **kwargs):
         sql = "SELECT * FROM chats WHERE "
         sql, parameters = self.format_args(sql, parameters=kwargs)
@@ -85,11 +89,6 @@ class Database:
     async def select_all_chats(self):
         sql = "SELECT * FROM Chats"
         return await self.execute(sql, fetch=True)
-
-    async def count_order_ids(self):
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        sql = "SELECT COUNT(id) FROM orders WHERE created_at >= $1"
-        return await self.execute(sql, today_start, fetchval=True)
 
     async def select_orders(self):
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -105,13 +104,36 @@ class Database:
         sql, parameters = self.format_args(sql, parameters=kwargs)
         return await self.execute(sql, *parameters, fetchrow=True)
 
+    async def select_all_bot_admins(self):
+        sql = "SELECT * FROM bot_admins"
+        return await self.execute(sql, fetch=True)
+
+    async def get_admin(self, telegram_id):
+        sql = "SELECT * FROM bot_admins WHERE telegram_id=$1"
+        return await self.execute(sql, telegram_id, fetchrow=True)
+
     async def count_users(self):
         sql = "SELECT COUNT(*) FROM Users"
         return await self.execute(sql, fetchval=True)
 
-    async def update_user_username(self, username, telegram_id):
-        sql = "UPDATE Users SET username=$1 WHERE telegram_id=$2"
-        return await self.execute(sql, username, telegram_id, execute=True)
+    async def count_order_ids(self):
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        sql = "SELECT COUNT(id) FROM orders WHERE created_at >= $1"
+        return await self.execute(sql, today_start, fetchval=True)
+
+    async def user_is_admin(self, telegram_id):
+        sql = "SELECT COUNT(*) FROM bot_admins WHERE telegram_id=$1"
+        user = await self.execute(sql, telegram_id, fetchval=True)
+        return user > 0
+
+    async def check_login(self, login):
+        sql = "SELECT COUNT(*) FROM bot_admins WHERE login=$1"
+        user = await self.execute(sql, login, fetchval=True)
+        return user > 0
+
+    async def activate_user(self, telegram_id):
+        sql = "UPDATE bot_admins SET is_active=True WHERE telegram_id=$1"
+        return await self.execute(sql, telegram_id, execute=True)
 
     async def delete_users(self):
         await self.execute("DELETE FROM Users WHERE TRUE", execute=True)
@@ -124,6 +146,9 @@ class Database:
                                execute=True)
         except Exception as err:
             logging.error(err)
+
+    async def delete_admin(self, telegram_id):
+        await self.execute("DELETE FROM bot_admins WHERE telegram_id=$1", telegram_id, execute=True)
 
     async def drop_users(self):
         await self.execute("DROP TABLE Users", execute=True)
