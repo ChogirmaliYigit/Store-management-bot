@@ -135,7 +135,7 @@ async def get_excel_file(message: types.Message):
     file_path = f"data/orders.xlsx"
 
     data = [[
-        order.get("created_at").strftime("%d-%m-%Y"),
+        str(order.get("created_at").strftime("%d-%m-%Y")),
         order.get("client_name"),
         order.get("client_phone_number"),
         order.get("client_products"),
