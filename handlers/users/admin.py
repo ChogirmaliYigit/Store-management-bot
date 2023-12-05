@@ -126,3 +126,13 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("Adminlar ro'yxati 👇", reply_markup=await get_admins_markup())
     await state.set_state(AdminState.admins)
+
+
+@router.message(Command("excel"), IsBotAdminFilter(ADMINS))
+async def get_excel_file(message: types.Message):
+    orders = await db.select_orders()
+
+    file_path = f"data/orders.xlsx"
+    await export_to_excel(data=orders, headings=['Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi', "To'lov summasi", 'Ijtimoiy tarmoq'], filepath=file_path)
+
+    await message.answer_document(types.input_file.FSInputFile(file_path))
