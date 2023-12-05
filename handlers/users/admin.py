@@ -133,6 +133,17 @@ async def get_excel_file(message: types.Message):
     orders = await db.select_orders()
 
     file_path = f"data/orders.xlsx"
+
+    data = [[
+        order.get("created_at").strftime("%d-%m-%Y"),
+        order.get("client_name"),
+        order.get("client_phone_number"),
+        order.get("client_products"),
+        order.get("location") if order.get("location") else "Mavjud emas",
+        order.get("delivery_type"),
+        order.get("client_products_price"),
+        order.get("client_social_network")
+    ] for order in orders]
     await export_to_excel(data=orders, headings=['Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi', "To'lov summasi", 'Ijtimoiy tarmoq'], filepath=file_path)
 
     await message.answer_document(types.input_file.FSInputFile(file_path))
