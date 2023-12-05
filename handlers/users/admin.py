@@ -144,6 +144,6 @@ async def get_excel_file(message: types.Message):
         order.get("client_products_price"),
         order.get("client_social_network")
     ] for order in orders]
-    await export_to_excel(data=orders, headings=['Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi', "To'lov summasi", 'Ijtimoiy tarmoq'], filepath=file_path)
+    await export_to_excel(data=data, headings=['Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi', "To'lov summasi", 'Ijtimoiy tarmoq'], filepath=file_path)
 
     await message.answer_document(types.input_file.FSInputFile(file_path))
