@@ -11,6 +11,7 @@ from states.states import AdminState, UserState
 from filters.admin import IsBotAdminFilter
 from data.config import ADMINS
 from utils.pgtoexcel import export_to_excel
+from utils.extra_datas import write_orders_to_sheets
 
 router = Router()
 
@@ -144,6 +145,24 @@ async def get_excel_file(message: types.Message):
         order.get("client_products_price"),
         order.get("client_social_network")
     ] for order in orders]
-    await export_to_excel(data=data, headings=['Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi', "To'lov summasi", 'Ijtimoiy tarmoq'], filepath=file_path)
+    try:
+        await export_to_excel(
+            data=data,
+            headings=[
+                'Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi',
+                "To'lov summasi", 'Ijtimoiy tarmoq'
+            ],
+            filepath=file_path
+        )
+        await message.answer_document(types.input_file.FSInputFile(file_path))
+    except Exception as excel_error:
+        print(excel_error)
+        await message.answer("Excel faylga yozishda xatolik yuz berdi.")
+        await bot.send_message(ADMINS[0], str(excel_error))
 
-    await message.answer_document(types.input_file.FSInputFile(file_path))
+    try:
+        await write_orders_to_sheets()
+    except Exception as sheets_error:
+        print(sheets_error)
+        await message.answer("Sheetsga yozishda xatolik yuz berdi.")
+        await bot.send_message(ADMINS[0], str(sheets_error))
