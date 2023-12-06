@@ -1,11 +1,11 @@
+import calendar
 import logging
-from typing import Union
-from datetime import datetime
-
 import asyncpg
+
+from typing import Union
+from datetime import datetime, timedelta
 from asyncpg import Connection
 from asyncpg.pool import Pool
-
 from data import config
 
 
@@ -94,6 +94,14 @@ class Database:
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         sql = "SELECT * FROM orders WHERE created_at >= $1"
         return await self.execute(sql, today_start, fetch=True)
+
+    async def select_monthly_orders(self):
+        current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        _, last_day = calendar.monthrange(current_month_start.year, current_month_start.month)
+        next_month_start = (current_month_start + timedelta(days=last_day)).replace(day=1)
+
+        sql = "SELECT * FROM orders WHERE created_at >= $1 AND created_at < $2"
+        return await self.execute(sql, current_month_start, next_month_start, fetch=True)
 
     async def select_all_users(self):
         sql = "SELECT * FROM Users"

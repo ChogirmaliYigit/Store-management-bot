@@ -131,7 +131,7 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
 
 @router.message(Command("excel"), IsBotAdminFilter(ADMINS))
 async def get_excel_file(message: types.Message):
-    orders = await db.select_orders()
+    orders = await db.select_monthly_orders()
 
     file_path = f"data/orders.xlsx"
 

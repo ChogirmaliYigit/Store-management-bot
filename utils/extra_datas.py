@@ -129,7 +129,7 @@ def get_emoji_for_number(number: str):
 
 
 async def write_orders_to_sheets():
-    orders = await db.select_orders()
+    orders = await db.select_monthly_orders()
     today = datetime.datetime.now().strftime("%m-%Y")
 
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
