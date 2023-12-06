@@ -131,7 +131,7 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
 
 @router.message(Command("excel"), IsBotAdminFilter(ADMINS))
 async def get_excel_file(message: types.Message):
-    orders = await db.select_monthly_orders()
+    orders = await db.select_all_orders()
 
     file_path = f"data/orders.xlsx"
 
@@ -158,11 +158,11 @@ async def get_excel_file(message: types.Message):
     except Exception as excel_error:
         print(excel_error)
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
-        await bot.send_message(ADMINS[0], str(excel_error))
+        await bot.send_message(ADMINS[0], f"Excel error: {str(excel_error)}")
 
-    try:
-        await write_orders_to_sheets()
-    except Exception as sheets_error:
-        print(sheets_error)
-        await message.answer("Sheetsga yozishda xatolik yuz berdi.")
-        await bot.send_message(ADMINS[0], str(sheets_error))
+    # try:
+    await write_orders_to_sheets(orders)
+    # except Exception as sheets_error:
+    #     print(sheets_error)
+    #     await message.answer("Sheetsga yozishda xatolik yuz berdi.")
+    #     await bot.send_message(ADMINS[0], f"Sheets error: {str(sheets_error)}")

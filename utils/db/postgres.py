@@ -95,6 +95,9 @@ class Database:
         sql = "SELECT * FROM orders WHERE created_at >= $1"
         return await self.execute(sql, today_start, fetch=True)
 
+    async def select_all_orders(self):
+        return await self.execute("SELECT * FROM orders", fetch=True)
+
     async def select_monthly_orders(self):
         current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         _, last_day = calendar.monthrange(current_month_start.year, current_month_start.month)
