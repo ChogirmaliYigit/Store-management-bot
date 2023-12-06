@@ -140,7 +140,10 @@ async def write_orders_to_sheets(orders: list = None):
     credentials = ServiceAccountCredentials.from_json_keyfile_name("google_credentials.json", scope)
     client = gspread.authorize(credentials)
     spreadsheet = client.open_by_url(spreadsheet_url)
-    spreadsheet.del_worksheet(spreadsheet.worksheet(today))
+    try:
+        spreadsheet.del_worksheet(spreadsheet.worksheet(today))
+    except Exception as sheets_error:
+        print("Sheets error:", sheets_error)
     worksheets = spreadsheet.worksheets()
     last_sheet = worksheets[-1]
     new_sheet = last_sheet.duplicate(new_sheet_name=today)

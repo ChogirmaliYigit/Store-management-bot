@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import asyncpg
+from datetime import datetime
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -131,9 +132,11 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
 
 @router.message(Command("excel"), IsBotAdminFilter(ADMINS))
 async def get_excel_file(message: types.Message):
-    orders = await db.select_all_orders()
+    orders = await db.select_monthly_orders()
 
-    file_path = f"data/orders.xlsx"
+    month = str(datetime.now().month)
+    year = str(datetime.now().year)
+    file_path = f"data/buyurtmalar_{month}_{year}.xlsx"
 
     data = [[
         str(order.get("created_at").strftime("%d-%m-%Y")),
