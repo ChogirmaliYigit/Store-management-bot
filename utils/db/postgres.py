@@ -106,9 +106,8 @@ class Database:
         return await self.execute(
             f"SELECT * "
             f"FROM orders "
-            f"WHERE created_at "
-            f"BETWEEN {current_month_start} "
-            f"AND {next_month_start - timedelta(microseconds=1)}",
+            f"WHERE created_at >= {current_month_start} "
+            f"AND created_at < {next_month_start - timedelta(microseconds=1)}",
             fetch=True
         )
 
