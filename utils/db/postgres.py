@@ -108,7 +108,7 @@ class Database:
             f"FROM orders "
             f"WHERE created_at "
             f"BETWEEN {current_month_start} "
-            f"AND {next_month_start}",
+            f"AND {next_month_start - timedelta(microseconds=1)}",
             fetch=True
         )
 
