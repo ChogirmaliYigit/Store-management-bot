@@ -1,5 +1,4 @@
 import calendar
-import logging
 import asyncpg
 
 from typing import Union
@@ -7,6 +6,7 @@ from datetime import datetime, timedelta
 from asyncpg import Connection
 from asyncpg.pool import Pool
 from data import config
+from utils.notify_admins import logging_to_admin
 
 
 class Database:
@@ -19,6 +19,7 @@ class Database:
             password=config.DB_PASS,
             host=config.DB_HOST,
             database=config.DB_NAME,
+            port=config.DB_PORT,
         )
 
     async def execute(
@@ -103,8 +104,10 @@ class Database:
         _, last_day = calendar.monthrange(current_month_start.year, current_month_start.month)
         next_month_start = (current_month_start + timedelta(days=last_day)).replace(day=1)
 
-        sql = "SELECT * FROM orders WHERE created_at >= $1 AND created_at < $2"
-        return await self.execute(sql, current_month_start, next_month_start, fetch=True)
+        sql = f"SELECT * FROM orders WHERE created_at BETWEEN "
+        return await self.execute(
+            sql, current_month_start.strftime('%Y-%m-%d'), next_month_start.strftime('%Y-%m-%d'), fetch=True
+        )
 
     async def select_all_users(self):
         sql = "SELECT * FROM Users"
@@ -156,7 +159,7 @@ class Database:
             await self.execute("DELETE FROM chats WHERE type=regions_group",
                                execute=True)
         except Exception as err:
-            logging.error(err)
+            await logging_to_admin(err)
 
     async def delete_admin(self, telegram_id):
         await self.execute("DELETE FROM bot_admins WHERE telegram_id=$1", telegram_id, execute=True)

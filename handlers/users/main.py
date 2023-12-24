@@ -1,4 +1,3 @@
-import logging
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.enums.content_type import ContentType
@@ -8,6 +7,7 @@ from keyboards.reply.buttons import skip_markup, payment_statuses_markup, social
     employees_markup, ask_location_markup, agree_location_markup, delivery_types_markup, agree_order_data_markup, \
     area_markup, wrapping_types_markup
 from utils.extra_datas import get_address_by_location, get_state_content, save_state_content
+from utils.notify_admins import logging_to_admin
 
 router = Router()
 
@@ -202,8 +202,9 @@ async def ask_agree_order_data(message: types.Message, state: FSMContext):
                                         longitude=data.get("longitude"), reply_to_message_id=msg.message_id)
             await message.answer("Buyurtma kanalga yuborildi ✅")
         except Exception as error:
-            logging.error(f"An error occurred while sending order data to the channel ({channel.get('chat_id')}). "
-                          f"Error: {error}")
+            await logging_to_admin(f"An error occurred while sending order data to the channel "
+                                   f"({channel.get('chat_id') if channel else ''})."
+                                   f"Error: {error}")
             await message.answer("Kanalga yuborishda muammo tug'ildi ❌")
     await state.clear()
     await message.answer(f"Yo'nalishlardan birini tanlang 👇", reply_markup=area_markup)

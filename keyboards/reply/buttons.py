@@ -22,6 +22,7 @@ social_networks_markup = ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
     [KeyboardButton(text="Telegram")],
     [KeyboardButton(text="Instagram")],
     [KeyboardButton(text="Telefon orqali")],
+    [KeyboardButton(text="Sayt")],
 ])
 
 

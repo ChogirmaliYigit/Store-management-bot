@@ -1,4 +1,3 @@
-import logging
 import asyncio
 import asyncpg
 from datetime import datetime
@@ -13,6 +12,7 @@ from filters.admin import IsBotAdminFilter
 from data.config import ADMINS
 from utils.pgtoexcel import export_to_excel
 from utils.extra_datas import write_orders_to_sheets
+from utils.notify_admins import logging_to_admin
 
 router = Router()
 
@@ -44,7 +44,7 @@ async def send_ad_to_users(message: types.Message, state: FSMContext):
             count += 1
             await asyncio.sleep(0.05)
         except Exception as error:
-            logging.info(f"Ad did not send to user: {user_id}. Error: {error}")
+            await logging_to_admin(f"Ad did not send to user: {user_id}. Error: {error}")
     await message.answer(text=f"Reklama {count} ta foydalauvchiga muvaffaqiyatli yuborildi.")
     await state.clear()
 
@@ -86,7 +86,7 @@ async def admins_detailed(call: types.CallbackQuery, state: FSMContext):
         try:
             await db.delete_admin(int(call.data.split("_")[-1]))
         except Exception as error:
-            logging.error(error)
+            await logging_to_admin(error)
         await call.answer("Admin o'chirildi!")
         await call.message.edit_reply_markup(reply_markup=await get_admins_markup())
     elif call.data == "main_page":
@@ -123,7 +123,7 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
     except asyncpg.exceptions.UniqueViolationError:
         await message.answer("Admin oldin qo'shilgan ℹ️")
     except Exception as error:
-        logging.error(error)
+        await logging_to_admin(error)
         await message.answer("Admin qo'shishda muammo bo'ldi ❌")
     await state.clear()
     await message.answer("Adminlar ro'yxati 👇", reply_markup=await get_admins_markup())
@@ -146,26 +146,25 @@ async def get_excel_file(message: types.Message):
         order.get("location") if order.get("location") else "Mavjud emas",
         order.get("delivery_type"),
         order.get("client_products_price"),
-        order.get("client_social_network")
+        order.get("client_social_network"),
+        order.get("employee"),
     ] for order in orders]
     try:
         await export_to_excel(
             data=data,
             headings=[
                 'Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi',
-                "To'lov summasi", 'Ijtimoiy tarmoq'
+                "To'lov summasi", 'Ijtimoiy tarmoq', "Kim qabul qildi",
             ],
             filepath=file_path
         )
         await message.answer_document(types.input_file.FSInputFile(file_path))
     except Exception as excel_error:
-        print(excel_error)
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
-        await bot.send_message(ADMINS[0], f"Excel error: {str(excel_error)}")
+        await logging_to_admin(f"Excel error: {str(excel_error)}")
 
-    # try:
-    await write_orders_to_sheets(orders)
-    # except Exception as sheets_error:
-    #     print(sheets_error)
-    #     await message.answer("Sheetsga yozishda xatolik yuz berdi.")
-    #     await bot.send_message(ADMINS[0], f"Sheets error: {str(sheets_error)}")
+    try:
+        await write_orders_to_sheets(orders)
+    except Exception as sheets_error:
+        await message.answer("Sheetsga yozishda xatolik yuz berdi.")
+        await logging_to_admin(f"Sheets error: {str(sheets_error)}")

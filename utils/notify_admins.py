@@ -1,5 +1,3 @@
-import logging
-
 from aiogram import Bot
 
 from data.config import ADMINS
@@ -14,4 +12,10 @@ async def on_startup_notify(bot: Bot):
                        f"<b>Bot Username:</b> {bot_properties.username}"]
             await bot.send_message(int(admin), "\n".join(message))
         except Exception as err:
-            logging.exception(err)
+            await logging_to_admin(err)
+
+
+async def logging_to_admin(error_message):
+    from loader import bot
+
+    await bot.send_message(ADMINS[0], str(error_message))

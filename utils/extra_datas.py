@@ -1,14 +1,17 @@
+import asyncio
 import datetime
 import ssl
-import asyncio
+import time
+
+import aioschedule
 import certifi
 import gspread
-import aioschedule
-
-from loader import db
-from geopy.geocoders import Nominatim
 from aiogram.fsm.context import FSMContext
+from geopy.geocoders import Nominatim
 from oauth2client.service_account import ServiceAccountCredentials
+
+from utils.notify_admins import logging_to_admin
+from loader import db
 
 ESCAPE_CHARS_MARKDOWN = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
 
@@ -31,6 +34,23 @@ def get_address_by_location(latitude, longitude):
     return location.address
 
 
+def get_spreadsheet():
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
+    scope = [
+        "https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive",
+    ]
+    credentials = ServiceAccountCredentials.from_json_keyfile_name("google_credentials.json", scope)
+    client = gspread.authorize(credentials)
+
+    return client.open_by_url(spreadsheet_url)
+
+
+def next_available_row(worksheet):
+    str_list = list(filter(None, worksheet.col_values(1)))
+    return str(len(str_list)+1)
+
+
 async def save_state_content(state: FSMContext):
     data = await state.get_data()
     area = data.get("area")
@@ -51,6 +71,7 @@ async def save_state_content(state: FSMContext):
     delivery_type = data.get("delivery_type")
     note = data.get("note")
 
+    # Save an order to database
     order = await db.add_order(
         area=area,
         client_name=client_name,
@@ -70,6 +91,23 @@ async def save_state_content(state: FSMContext):
         latitude=latitude,
         longitude=longitude,
     )
+
+    # Also write every order to sheets
+    this_month = datetime.datetime.now().strftime("%m-%Y")
+    spreadsheet = get_spreadsheet()
+    sheet = spreadsheet.worksheet(this_month)
+    if not sheet:
+        sheet = spreadsheet.worksheet("Example").duplicate(this_month)
+    start_index = int(next_available_row(sheet))
+    sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
+    sheet.update(f"B{start_index}", order.get("client_name"))
+    sheet.update(f"C{start_index}", order.get("client_phone_number"))
+    sheet.update(f"D{start_index}", order.get("client_products"))
+    sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+    sheet.update(f"F{start_index}", order.get("delivery_type"))
+    sheet.update(f"G{start_index}", order.get("client_products_price"))
+    sheet.update(f"H{start_index}", order.get("client_social_network"))
+    sheet.update(f"I{start_index}", order.get("employee"))
     return order
 
 
@@ -130,38 +168,31 @@ def get_emoji_for_number(number: str):
 
 async def write_orders_to_sheets(orders: list = None):
     orders = await db.select_monthly_orders() if not orders else orders
-    today = datetime.datetime.now().strftime("%m-%Y")
-
-    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
-    scope = [
-        "https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive",
-    ]
-    credentials = ServiceAccountCredentials.from_json_keyfile_name("google_credentials.json", scope)
-    client = gspread.authorize(credentials)
-    spreadsheet = client.open_by_url(spreadsheet_url)
+    this_month = datetime.datetime.now().strftime("%m-%Y")
+    spreadsheet = get_spreadsheet()
     try:
-        spreadsheet.del_worksheet(spreadsheet.worksheet(today))
+        spreadsheet.del_worksheet(spreadsheet.worksheet(this_month))
     except Exception as sheets_error:
-        print("Sheets error:", sheets_error)
-    worksheets = spreadsheet.worksheets()
-    last_sheet = worksheets[-1]
-    new_sheet = last_sheet.duplicate(new_sheet_name=today)
+        await logging_to_admin(f"Sheets error: {sheets_error}")
+    last_sheet = spreadsheet.worksheet("Example")
+    new_sheet = last_sheet.duplicate(new_sheet_name=this_month)
     start_index = 2
     for order in orders:
         new_sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
         new_sheet.update(f"B{start_index}", order.get("client_name"))
         new_sheet.update(f"C{start_index}", order.get("client_phone_number"))
         new_sheet.update(f"D{start_index}", order.get("client_products"))
-        new_sheet.update(f"F{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
-        new_sheet.update(f"G{start_index}", order.get("delivery_type"))
-        new_sheet.update(f"H{start_index}", order.get("client_products_price"))
-        new_sheet.update(f"I{start_index}", order.get("client_social_network"))
+        new_sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+        new_sheet.update(f"F{start_index}", order.get("delivery_type"))
+        new_sheet.update(f"G{start_index}", order.get("client_products_price"))
+        new_sheet.update(f"H{start_index}", order.get("client_social_network"))
+        new_sheet.update(f"I{start_index}", order.get("employee"))
         start_index += 1
+        time.sleep(1)
 
 
 async def scheduler():
-    aioschedule.every().month.at("00:00").do(write_orders_to_sheets)
+    # aioschedule.every().month.at("00:00").do(write_orders_to_sheets)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)

@@ -1,15 +1,13 @@
-import logging
 from aiogram import Router, types
 from aiogram.filters import CommandStart
-from aiogram.enums.chat_type import ChatType
 from aiogram.enums.parse_mode import ParseMode
 from aiogram.fsm.context import FSMContext
-from aiogram.client.session.middlewares.request_logging import logger
 from loader import db, bot
 from data.config import ADMINS
 from utils.extra_datas import make_title
 from keyboards.reply.buttons import area_markup
 from states.states import UserState, AnonymousUserState
+from utils.notify_admins import logging_to_admin
 
 router = Router()
 
@@ -36,7 +34,7 @@ async def do_start(message: types.Message, state: FSMContext):
     try:
         user = await db.add_user(telegram_id=telegram_id, full_name=full_name, username=username)
     except Exception as error:
-        logger.info(error)
+        await logging_to_admin(error)
     if user:
         count = await db.count_users()
         msg = (f"[{make_title(user['full_name'])}](tg://user?id={user['telegram_id']}) bazaga qo'shildi\."
@@ -51,7 +49,7 @@ async def do_start(message: types.Message, state: FSMContext):
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except Exception as error:
-            logger.info(f"Data did not send to admin: {admin}. Error: {error}")
+            await logging_to_admin(f"Data did not send to admin: {admin}. Error: {error}")
     user = await db.user_is_admin(int(telegram_id))
     admin = await db.get_admin(int(telegram_id))
     if str(telegram_id) in ADMINS or admin.get("is_active"):
