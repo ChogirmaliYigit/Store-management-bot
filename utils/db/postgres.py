@@ -107,8 +107,8 @@ class Database:
             f"SELECT * "
             f"FROM orders "
             f"WHERE created_at "
-            f"BETWEEN {current_month_start.strftime('%Y-%m-%d')} "
-            f"AND {next_month_start.strftime('%Y-%m-%d')}",
+            f"BETWEEN {current_month_start} "
+            f"AND {next_month_start}",
             fetch=True
         )
 
