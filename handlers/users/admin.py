@@ -168,3 +168,41 @@ async def get_excel_file(message: types.Message):
     except Exception as sheets_error:
         await message.answer("Sheetsga yozishda xatolik yuz berdi.")
         await logging_to_admin(f"Sheets error: {str(sheets_error)}")
+
+
+@router.message(Command("excel_full"), IsBotAdminFilter(ADMINS))
+async def get_excel_file(message: types.Message):
+    orders = await db.select_all_orders()
+
+    file_path = f"data/buyurtmalar_toliq.xlsx"
+
+    data = [[
+        str(order.get("created_at").strftime("%d-%m-%Y")),
+        order.get("client_name"),
+        order.get("client_phone_number"),
+        order.get("client_products"),
+        order.get("location") if order.get("location") else "Mavjud emas",
+        order.get("delivery_type"),
+        order.get("client_products_price"),
+        order.get("client_social_network"),
+        order.get("employee"),
+    ] for order in orders]
+    try:
+        await export_to_excel(
+            data=data,
+            headings=[
+                'Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi',
+                "To'lov summasi", 'Ijtimoiy tarmoq', "Kim qabul qildi",
+            ],
+            filepath=file_path
+        )
+        await message.answer_document(types.input_file.FSInputFile(file_path))
+    except Exception as excel_error:
+        await message.answer("Excel faylga yozishda xatolik yuz berdi.")
+        await logging_to_admin(f"Excel error: {str(excel_error)}")
+
+    try:
+        await write_orders_to_sheets(orders)
+    except Exception as sheets_error:
+        await message.answer("Sheetsga yozishda xatolik yuz berdi.")
+        await logging_to_admin(f"Sheets error: {str(sheets_error)}")
