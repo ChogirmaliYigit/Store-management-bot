@@ -103,11 +103,12 @@ class Database:
         current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         _, last_day = calendar.monthrange(current_month_start.year, current_month_start.month)
         next_month_start = (current_month_start + timedelta(days=last_day)).replace(day=1)
+
+        sql = "SELECT * FROM orders WHERE created_at >= $1 AND created_at < $2"
         return await self.execute(
-            f"SELECT * "
-            f"FROM orders "
-            f"WHERE created_at >= {current_month_start} "
-            f"AND created_at < {next_month_start - timedelta(microseconds=1)}",
+            sql,
+            current_month_start,
+            next_month_start - timedelta(microseconds=1),
             fetch=True
         )
 
