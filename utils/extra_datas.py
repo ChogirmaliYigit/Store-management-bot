@@ -9,8 +9,9 @@ import gspread
 from aiogram.fsm.context import FSMContext
 from geopy.geocoders import Nominatim
 from oauth2client.service_account import ServiceAccountCredentials
-
+from aiogram import types
 from utils.notify_admins import logging_to_admin
+from utils.pgtoexcel import export_to_excel
 from loader import db
 
 ESCAPE_CHARS_MARKDOWN = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
@@ -71,43 +72,49 @@ async def save_state_content(state: FSMContext):
     delivery_type = data.get("delivery_type")
     note = data.get("note")
 
-    # Save an order to database
-    order = await db.add_order(
-        area=area,
-        client_name=client_name,
-        client_phone_number=client_phone_number,
-        client_products=client_products,
-        client_products_images=client_products_images,
-        client_products_wrapping_type=client_products_wrapping_type,
-        client_wrapped_products_images=client_wrapped_products_images,
-        client_products_price=client_products_price,
-        client_products_payment_status=client_products_payment_status,
-        client_social_network=client_social_network,
-        employee=employee,
-        delivery_date=delivery_date,
-        location=location,
-        delivery_type=delivery_type,
-        note=note,
-        latitude=latitude,
-        longitude=longitude,
-    )
+    # Save an order to database if it is not for test
+    if "test" not in data.get("client_products"):
+        order = await db.add_order(
+            area=area,
+            client_name=client_name,
+            client_phone_number=client_phone_number,
+            client_products=client_products,
+            client_products_images=client_products_images,
+            client_products_wrapping_type=client_products_wrapping_type,
+            client_wrapped_products_images=client_wrapped_products_images,
+            client_products_price=client_products_price,
+            client_products_payment_status=client_products_payment_status,
+            client_social_network=client_social_network,
+            employee=employee,
+            delivery_date=delivery_date,
+            location=location,
+            delivery_type=delivery_type,
+            note=note,
+            latitude=latitude,
+            longitude=longitude,
+        )
+    else:
+        order = {}
 
-    # Also write every order to sheets
-    this_month = datetime.datetime.now().strftime("%m-%Y")
-    spreadsheet = get_spreadsheet()
-    sheet = spreadsheet.worksheet(this_month)
-    if not sheet:
-        sheet = spreadsheet.worksheet("Example").duplicate(this_month)
-    start_index = int(next_available_row(sheet))
-    sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
-    sheet.update(f"B{start_index}", order.get("client_name"))
-    sheet.update(f"C{start_index}", order.get("client_phone_number"))
-    sheet.update(f"D{start_index}", order.get("client_products"))
-    sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
-    sheet.update(f"F{start_index}", order.get("delivery_type"))
-    sheet.update(f"G{start_index}", order.get("client_products_price"))
-    sheet.update(f"H{start_index}", order.get("client_social_network"))
-    sheet.update(f"I{start_index}", order.get("employee"))
+    try:
+        # Also write every order to sheets
+        this_month = datetime.datetime.now().strftime("%m-%Y")
+        spreadsheet = get_spreadsheet()
+        sheet = spreadsheet.worksheet(this_month)
+        if not sheet:
+            sheet = spreadsheet.worksheet("Example").duplicate(this_month)
+        start_index = int(next_available_row(sheet))
+        sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
+        sheet.update(f"B{start_index}", order.get("client_name"))
+        sheet.update(f"C{start_index}", order.get("client_phone_number"))
+        sheet.update(f"D{start_index}", order.get("client_products"))
+        sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+        sheet.update(f"F{start_index}", order.get("delivery_type"))
+        sheet.update(f"G{start_index}", order.get("client_products_price"))
+        sheet.update(f"H{start_index}", order.get("client_social_network"))
+        sheet.update(f"I{start_index}", order.get("employee"))
+    except Exception as sheets_error:
+        await logging_to_admin(f"Sheets error: {str(sheets_error)}")
     return order
 
 
@@ -166,6 +173,30 @@ def get_emoji_for_number(number: str):
     return string_numbers.get(number)
 
 
+async def write_orders_to_excel(orders: list, file_path: str):
+    data = [[
+        str(order.get("created_at").strftime("%d-%m-%Y")),
+        order.get("client_name"),
+        order.get("client_phone_number"),
+        order.get("client_products"),
+        order.get("location") if order.get("location") else "Mavjud emas",
+        order.get("delivery_type"),
+        order.get("client_products_price"),
+        order.get("client_social_network"),
+        order.get("employee"),
+    ] for order in orders if "test" not in order.get("client_products")]
+
+    await export_to_excel(
+        data=data,
+        headings=[
+            'Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi',
+            "To'lov summasi", 'Ijtimoiy tarmoq', "Kim qabul qildi",
+        ],
+        filepath=file_path
+    )
+    return types.input_file.FSInputFile(file_path)
+
+
 async def write_orders_to_sheets(orders: list = None):
     orders = await db.select_monthly_orders() if not orders else orders
     this_month = datetime.datetime.now().strftime("%m-%Y")
@@ -192,7 +223,7 @@ async def write_orders_to_sheets(orders: list = None):
 
 
 async def scheduler():
-    # aioschedule.every().month.at("00:00").do(write_orders_to_sheets)
+    aioschedule.every().month.at("00:00").do(write_orders_to_sheets)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)

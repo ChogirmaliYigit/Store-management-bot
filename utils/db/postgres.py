@@ -99,8 +99,13 @@ class Database:
     async def select_all_orders(self):
         return await self.execute("SELECT * FROM orders", fetch=True)
 
-    async def select_monthly_orders(self):
-        current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    async def select_monthly_orders(self, month: str = None, year: str = None):
+        if month and year:
+            current_month_start = datetime(
+                year=int(year), month=int(month), day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+        else:
+            current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         _, last_day = calendar.monthrange(current_month_start.year, current_month_start.month)
         next_month_start = (current_month_start + timedelta(days=last_day)).replace(day=1)
 

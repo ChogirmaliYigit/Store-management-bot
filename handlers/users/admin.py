@@ -11,7 +11,7 @@ from states.states import AdminState, UserState
 from filters.admin import IsBotAdminFilter
 from data.config import ADMINS
 from utils.pgtoexcel import export_to_excel
-from utils.extra_datas import write_orders_to_sheets
+from utils.extra_datas import write_orders_to_sheets, write_orders_to_excel
 from utils.notify_admins import logging_to_admin
 
 router = Router()
@@ -130,35 +130,23 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
     await state.set_state(AdminState.admins)
 
 
-@router.message(Command("excel"), IsBotAdminFilter(ADMINS))
+@router.message(F.text.startswith('/excel'), IsBotAdminFilter(ADMINS))
 async def get_excel_file(message: types.Message):
-    orders = await db.select_monthly_orders()
-
-    month = str(datetime.now().month)
-    year = str(datetime.now().year)
+    if len(str(message.text)) > 6:
+        month = str(message.text).split()[1].split("-")[0]
+        year = str(message.text).split()[1].split("-")[1]
+        if not 1 <= int(month) <= 12 or len(year) != 4:
+            await message.answer("Iltimos, sanani to'g'ri ko'rinishda bering. Namuna: <code>/excel 12-2023</code>")
+            return
+    else:
+        month = datetime.now().month
+        year = datetime.now().year
     file_path = f"data/buyurtmalar_{month}_{year}.xlsx"
 
-    data = [[
-        str(order.get("created_at").strftime("%d-%m-%Y")),
-        order.get("client_name"),
-        order.get("client_phone_number"),
-        order.get("client_products"),
-        order.get("location") if order.get("location") else "Mavjud emas",
-        order.get("delivery_type"),
-        order.get("client_products_price"),
-        order.get("client_social_network"),
-        order.get("employee"),
-    ] for order in orders]
+    orders = await db.select_monthly_orders(month=month, year=year)
+
     try:
-        await export_to_excel(
-            data=data,
-            headings=[
-                'Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi',
-                "To'lov summasi", 'Ijtimoiy tarmoq', "Kim qabul qildi",
-            ],
-            filepath=file_path
-        )
-        await message.answer_document(types.input_file.FSInputFile(file_path))
+        await message.answer_document(await write_orders_to_excel(orders, file_path))
     except Exception as excel_error:
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
         await logging_to_admin(f"Excel error: {str(excel_error)}")
@@ -173,30 +161,10 @@ async def get_excel_file(message: types.Message):
 @router.message(Command("excel_full"), IsBotAdminFilter(ADMINS))
 async def get_excel_file(message: types.Message):
     orders = await db.select_all_orders()
-
     file_path = f"data/buyurtmalar_toliq.xlsx"
 
-    data = [[
-        str(order.get("created_at").strftime("%d-%m-%Y")),
-        order.get("client_name"),
-        order.get("client_phone_number"),
-        order.get("client_products"),
-        order.get("location") if order.get("location") else "Mavjud emas",
-        order.get("delivery_type"),
-        order.get("client_products_price"),
-        order.get("client_social_network"),
-        order.get("employee"),
-    ] for order in orders]
     try:
-        await export_to_excel(
-            data=data,
-            headings=[
-                'Sana', 'Ism Familiya', 'Telefon raqami', 'Kitoblar nomi', 'Manzili', 'Yetkazib berish turi',
-                "To'lov summasi", 'Ijtimoiy tarmoq', "Kim qabul qildi",
-            ],
-            filepath=file_path
-        )
-        await message.answer_document(types.input_file.FSInputFile(file_path))
+        await message.answer_document(await write_orders_to_excel(orders, file_path))
     except Exception as excel_error:
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
         await logging_to_admin(f"Excel error: {str(excel_error)}")
