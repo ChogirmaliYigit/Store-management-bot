@@ -99,6 +99,13 @@ class Database:
     async def select_all_orders(self):
         return await self.execute("SELECT * FROM orders", fetch=True)
 
+    async def select_unwritten_order(self):
+        return await self.execute("SELECT * FROM orders WHERE is_written_to_sheet=False LIMIT 1", fetchrow=True)
+
+    async def mark_order_as_written(self, order_id):
+        sql = "UPDATE orders SET is_written_to_sheet=True WHERE order_id=$1 and is_written_to_sheet=False"
+        return await self.execute(sql, order_id, execute=True)
+
     async def select_monthly_orders(self, month: str = None, year: str = None):
         if month and year:
             current_month_start = datetime(

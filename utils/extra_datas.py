@@ -95,26 +95,6 @@ async def save_state_content(state: FSMContext):
         )
     else:
         order = {}
-
-    try:
-        # Also write every order to sheets
-        this_month = datetime.datetime.now().strftime("%m-%Y")
-        spreadsheet = get_spreadsheet()
-        sheet = spreadsheet.worksheet(this_month)
-        if not sheet:
-            sheet = spreadsheet.worksheet("Example").duplicate(this_month)
-        start_index = int(next_available_row(sheet))
-        sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
-        sheet.update(f"B{start_index}", order.get("client_name"))
-        sheet.update(f"C{start_index}", order.get("client_phone_number"))
-        sheet.update(f"D{start_index}", order.get("client_products"))
-        sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
-        sheet.update(f"F{start_index}", order.get("delivery_type"))
-        sheet.update(f"G{start_index}", order.get("client_products_price"))
-        sheet.update(f"H{start_index}", order.get("client_social_network"))
-        sheet.update(f"I{start_index}", order.get("employee"))
-    except Exception as sheets_error:
-        await logging_to_admin(f"Sheets error: {str(sheets_error)}")
     return order
 
 
@@ -197,33 +177,54 @@ async def write_orders_to_excel(orders: list, file_path: str):
     return types.input_file.FSInputFile(file_path)
 
 
-async def write_orders_to_sheets(orders: list = None):
-    orders = await db.select_monthly_orders() if not orders else orders
-    this_month = datetime.datetime.now().strftime("%m-%Y")
-    spreadsheet = get_spreadsheet()
+async def write_order_to_sheets():
+    order = await db.select_unwritten_order()
     try:
-        spreadsheet.del_worksheet(spreadsheet.worksheet(this_month))
+        # Write every order to google sheets. One second = one order
+        this_month = datetime.datetime.now().strftime("%m-%Y")
+        spreadsheet = get_spreadsheet()
+        sheet = spreadsheet.worksheet(this_month)
+        if not sheet:
+            sheet = spreadsheet.worksheet("Example").duplicate(this_month)
+        start_index = int(next_available_row(sheet))
+        sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
+        sheet.update(f"B{start_index}", order.get("client_name"))
+        sheet.update(f"C{start_index}", order.get("client_phone_number"))
+        sheet.update(f"D{start_index}", order.get("client_products"))
+        sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+        sheet.update(f"F{start_index}", order.get("delivery_type"))
+        sheet.update(f"G{start_index}", order.get("client_products_price"))
+        sheet.update(f"H{start_index}", order.get("client_social_network"))
+        sheet.update(f"I{start_index}", order.get("employee"))
+        await db.mark_order_as_written(order.get("id"))
     except Exception as sheets_error:
-        await logging_to_admin(f"Sheets error: {sheets_error}")
-    last_sheet = spreadsheet.worksheet("Example")
-    new_sheet = last_sheet.duplicate(new_sheet_name=this_month)
-    start_index = 2
-    for order in orders:
-        new_sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
-        new_sheet.update(f"B{start_index}", order.get("client_name"))
-        new_sheet.update(f"C{start_index}", order.get("client_phone_number"))
-        new_sheet.update(f"D{start_index}", order.get("client_products"))
-        new_sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
-        new_sheet.update(f"F{start_index}", order.get("delivery_type"))
-        new_sheet.update(f"G{start_index}", order.get("client_products_price"))
-        new_sheet.update(f"H{start_index}", order.get("client_social_network"))
-        new_sheet.update(f"I{start_index}", order.get("employee"))
-        start_index += 1
-        time.sleep(1)
+        await logging_to_admin(f"Sheets error: {str(sheets_error)}\n\nOrder ID: {order.get('id')}")
+    # orders = await db.select_monthly_orders() if not orders else orders
+    # this_month = datetime.datetime.now().strftime("%m-%Y")
+    # spreadsheet = get_spreadsheet()
+    # try:
+    #     spreadsheet.del_worksheet(spreadsheet.worksheet(this_month))
+    # except Exception as sheets_error:
+    #     await logging_to_admin(f"Sheets error: {sheets_error}")
+    # last_sheet = spreadsheet.worksheet("Example")
+    # new_sheet = last_sheet.duplicate(new_sheet_name=this_month)
+    # start_index = 2
+    # for order in orders:
+    #     new_sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
+    #     new_sheet.update(f"B{start_index}", order.get("client_name"))
+    #     new_sheet.update(f"C{start_index}", order.get("client_phone_number"))
+    #     new_sheet.update(f"D{start_index}", order.get("client_products"))
+    #     new_sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+    #     new_sheet.update(f"F{start_index}", order.get("delivery_type"))
+    #     new_sheet.update(f"G{start_index}", order.get("client_products_price"))
+    #     new_sheet.update(f"H{start_index}", order.get("client_social_network"))
+    #     new_sheet.update(f"I{start_index}", order.get("employee"))
+    #     start_index += 1
+    #     time.sleep(1)
 
 
 async def scheduler():
-    aioschedule.every().month.at("00:00").do(write_orders_to_sheets)
+    aioschedule.every(1).seconds.do(write_order_to_sheets)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)

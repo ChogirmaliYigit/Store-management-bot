@@ -11,7 +11,7 @@ from states.states import AdminState, UserState
 from filters.admin import IsBotAdminFilter
 from data.config import ADMINS
 from utils.pgtoexcel import export_to_excel
-from utils.extra_datas import write_orders_to_sheets, write_orders_to_excel
+from utils.extra_datas import write_orders_to_excel
 from utils.notify_admins import logging_to_admin
 
 router = Router()
@@ -151,12 +151,6 @@ async def get_excel_file(message: types.Message):
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
         await logging_to_admin(f"Excel error: {str(excel_error)}")
 
-    try:
-        await write_orders_to_sheets(orders)
-    except Exception as sheets_error:
-        await message.answer("Sheetsga yozishda xatolik yuz berdi.")
-        await logging_to_admin(f"Sheets error: {str(sheets_error)}")
-
 
 @router.message(Command("excel_full"), IsBotAdminFilter(ADMINS))
 async def get_excel_file(message: types.Message):
@@ -168,9 +162,3 @@ async def get_excel_file(message: types.Message):
     except Exception as excel_error:
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
         await logging_to_admin(f"Excel error: {str(excel_error)}")
-
-    try:
-        await write_orders_to_sheets(orders)
-    except Exception as sheets_error:
-        await message.answer("Sheetsga yozishda xatolik yuz berdi.")
-        await logging_to_admin(f"Sheets error: {str(sheets_error)}")
