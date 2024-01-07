@@ -183,7 +183,11 @@ async def write_order_to_sheets():
         # Write every order to google sheets. One second = one order
         sheet_name = order.get("created_at").strftime("%m-%Y")
         spreadsheet = get_spreadsheet()
-        sheet = spreadsheet.worksheet(sheet_name)
+        sheet = None
+        try:
+            sheet = spreadsheet.worksheet(sheet_name)
+        except Exception as err:
+            await logging_to_admin(f"Sheets error while getting sheet by name: {str(err)}")
         if not sheet:
             sheet = spreadsheet.worksheet("Example").duplicate(sheet_name)
         start_index = int(next_available_row(sheet))
