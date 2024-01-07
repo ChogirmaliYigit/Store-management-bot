@@ -171,3 +171,9 @@ async def send_db(message: types.Message):
         await message.answer_document(types.input_file.FSInputFile(file_path))
     except Exception as excel_error:
         await logging_to_admin(f"Data sending error {file_path}: {str(excel_error)}")
+
+    file_path = "backend/data.sql"
+    try:
+        await message.answer_document(types.input_file.FSInputFile(file_path))
+    except Exception as excel_error:
+        await logging_to_admin(f"Data sending error {file_path}: {str(excel_error)}")
