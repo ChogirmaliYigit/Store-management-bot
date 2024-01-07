@@ -58,7 +58,6 @@ async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot) -> None:
     await setup_aiogram(bot=bot, dispatcher=dispatcher)
     await on_startup_notify(bot=bot)
     await set_default_commands(bot=bot)
-    await asyncio.create_task(await scheduler())
 
 
 async def aiogram_on_shutdown_polling(dispatcher: Dispatcher, bot: Bot):
@@ -80,6 +79,7 @@ def main():
     dispatcher.startup.register(aiogram_on_startup_polling)
     dispatcher.shutdown.register(aiogram_on_shutdown_polling)
     asyncio.run(dispatcher.start_polling(bot, close_bot_session=True))
+    asyncio.create_task(scheduler())
     # allowed_updates=['message', 'chat_member']
 
 
