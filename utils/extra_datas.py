@@ -179,30 +179,31 @@ async def write_orders_to_excel(orders: list, file_path: str):
 
 async def write_order_to_sheets():
     order = await db.select_unwritten_order()
-    try:
-        # Write every order to google sheets. One second = one order
-        sheet_name = order.get("created_at").strftime("%m-%Y")
-        spreadsheet = get_spreadsheet()
-        sheet = None
+    if order:
         try:
-            sheet = spreadsheet.worksheet(sheet_name)
-        except Exception as err:
-            await logging_to_admin(f"Sheets error while getting sheet by name: {str(err)}")
-        if not sheet:
-            sheet = spreadsheet.worksheet("Example").duplicate(sheet_name)
-        start_index = int(next_available_row(sheet))
-        sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
-        sheet.update(f"B{start_index}", order.get("client_name"))
-        sheet.update(f"C{start_index}", order.get("client_phone_number"))
-        sheet.update(f"D{start_index}", order.get("client_products"))
-        sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
-        sheet.update(f"F{start_index}", order.get("delivery_type"))
-        sheet.update(f"G{start_index}", order.get("client_products_price"))
-        sheet.update(f"H{start_index}", order.get("client_social_network"))
-        sheet.update(f"I{start_index}", order.get("employee"))
-        await db.mark_order_as_written(order.get("id"))
-    except Exception as sheets_error:
-        await logging_to_admin(f"Sheets error: {str(sheets_error)}\n\nOrder ID: {order.get('id')}")
+            # Write every order to google sheets. One second = one order
+            sheet_name = order.get("created_at").strftime("%m-%Y")
+            spreadsheet = get_spreadsheet()
+            sheet = None
+            try:
+                sheet = spreadsheet.worksheet(sheet_name)
+            except Exception as err:
+                await logging_to_admin(f"Sheets error while getting sheet by name: {str(err)}")
+            if not sheet:
+                sheet = spreadsheet.worksheet("Example").duplicate(new_sheet_name=sheet_name)
+            start_index = int(next_available_row(sheet))
+            sheet.update(f"A{start_index}", order.get("created_at").strftime("%d-%m-%Y"))
+            sheet.update(f"B{start_index}", order.get("client_name"))
+            sheet.update(f"C{start_index}", order.get("client_phone_number"))
+            sheet.update(f"D{start_index}", order.get("client_products"))
+            sheet.update(f"E{start_index}", order.get("location") if order.get("location") else "Mavjud emas")
+            sheet.update(f"F{start_index}", order.get("delivery_type"))
+            sheet.update(f"G{start_index}", order.get("client_products_price"))
+            sheet.update(f"H{start_index}", order.get("client_social_network"))
+            sheet.update(f"I{start_index}", order.get("employee"))
+            await db.mark_order_as_written(order.get("id"))
+        except Exception as sheets_error:
+            await logging_to_admin(f"Sheets error: {str(sheets_error)}\n\nOrder ID: {order.get('id')}")
 
 
 async def scheduler():
