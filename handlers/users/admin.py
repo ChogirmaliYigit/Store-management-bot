@@ -162,3 +162,12 @@ async def get_excel_file(message: types.Message):
     except Exception as excel_error:
         await message.answer("Excel faylga yozishda xatolik yuz berdi.")
         await logging_to_admin(f"Excel error: {str(excel_error)}")
+
+
+@router.message(Command("dbdata"), IsBotAdminFilter(ADMINS))
+async def send_db(message: types.Message):
+    file_path = "backend/data.db"
+    try:
+        await message.answer_document(types.input_file.FSInputFile(file_path))
+    except Exception as excel_error:
+        await logging_to_admin(f"Data sending error {file_path}: {str(excel_error)}")
