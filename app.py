@@ -3,7 +3,8 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.middlewares.request_logging import logger
 from loader import db
-from utils.extra_datas import scheduler
+from utils.extra_datas import write_order_to_sheets
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 def setup_handlers(dispatcher: Dispatcher) -> None:
@@ -46,7 +47,7 @@ async def database_connected():
     await db.delete_groups()
 
 
-async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot) -> None:
+async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot, scheduler: AsyncIOScheduler) -> None:
     from utils.set_bot_commands import set_default_commands
     from utils.notify_admins import on_startup_notify
 
@@ -59,11 +60,15 @@ async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot) -> None:
     await on_startup_notify(bot=bot)
     await set_default_commands(bot=bot)
 
+    scheduler.add_job(write_order_to_sheets, 'interval', seconds=2)
+    scheduler.start()
 
-async def aiogram_on_shutdown_polling(dispatcher: Dispatcher, bot: Bot):
+
+async def aiogram_on_shutdown_polling(dispatcher: Dispatcher, bot: Bot, scheduler: AsyncIOScheduler):
     logger.info("Stopping polling")
     await bot.session.close()
     await dispatcher.storage.close()
+    scheduler.shutdown(wait=False)
 
 
 def main():
@@ -76,11 +81,12 @@ def main():
     storage = MemoryStorage()
     dispatcher = Dispatcher(storage=storage)
 
+    scheduler = AsyncIOScheduler()
+    dispatcher['scheduler'] = scheduler
+
     dispatcher.startup.register(aiogram_on_startup_polling)
     dispatcher.shutdown.register(aiogram_on_shutdown_polling)
     asyncio.run(dispatcher.start_polling(bot, close_bot_session=True))
-    # asyncio.create_task(scheduler())
-    # allowed_updates=['message', 'chat_member']
 
 
 if __name__ == "__main__":

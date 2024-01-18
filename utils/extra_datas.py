@@ -1,9 +1,4 @@
-import asyncio
-import datetime
 import ssl
-import time
-
-import aioschedule
 import certifi
 import gspread
 from aiogram.fsm.context import FSMContext
@@ -204,10 +199,3 @@ async def write_order_to_sheets():
             await db.mark_order_as_written(order.get("id"))
         except Exception as sheets_error:
             await logging_to_admin(f"Sheets error: {str(sheets_error)}\n\nOrder ID: {order.get('id')}")
-
-
-async def scheduler():
-    aioschedule.every(1).seconds.do(write_order_to_sheets)
-    while True:
-        await aioschedule.run_pending()
-        await asyncio.sleep(1)
