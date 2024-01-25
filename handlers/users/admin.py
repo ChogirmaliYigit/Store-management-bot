@@ -4,12 +4,12 @@ from datetime import datetime
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from loader import db, bot
+from loader import db, bot, update_server_service
 from keyboards.inline.buttons import are_you_sure_markup, get_admins_markup
 from keyboards.reply.buttons import area_markup
 from states.states import AdminState, UserState
 from filters.admin import IsBotAdminFilter
-from data.config import ADMINS
+from data.config import ADMINS, PULL_COMMAND, RESTART_COMMAND
 from utils.pgtoexcel import export_to_excel
 from utils.extra_datas import write_orders_to_excel
 from utils.notify_admins import logging_to_admin
@@ -177,3 +177,12 @@ async def send_db(message: types.Message):
         await message.answer_document(types.input_file.FSInputFile(file_path))
     except Exception as excel_error:
         await logging_to_admin(f"Data sending error {file_path}: {str(excel_error)}")
+
+
+@router.message(Command("update_server"), IsBotAdminFilter(ADMINS))
+async def update_server(message: types.Message):
+    try:
+        await update_server_service(PULL_COMMAND, RESTART_COMMAND)
+        await message.answer("Update completed. Service restarted.")
+    except Exception as error:
+        await logging_to_admin(f"Error while updating the server: {error}")
