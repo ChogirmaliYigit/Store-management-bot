@@ -9,7 +9,10 @@ db = Database()
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 
 
-async def update_server_service(pull_command, restart_command):
+async def update_server_service(pull_command, restart_command, project_directory=None):
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    subprocess.run(f"cd {script_directory} && {pull_command}", shell=True)
+    subprocess.run(
+        f"cd {project_directory if project_directory else script_directory} && {pull_command}",
+        shell=True
+    )
     subprocess.run(restart_command, shell=True)
