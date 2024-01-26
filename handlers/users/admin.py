@@ -183,11 +183,5 @@ async def send_db(message: types.Message):
 async def update_server(message: types.Message):
     try:
         await update_server_service(PULL_COMMAND, RESTART_COMMAND)
-        await message.answer("Update completed. Service restarted.")
     except Exception as error:
         await logging_to_admin(f"Error while updating the server: {error}")
-
-
-@router.message(Command("test_handler"), IsBotAdminFilter(ADMINS))
-async def test_handler(message: types.Message):
-    await message.answer("Test handler is working well!")
