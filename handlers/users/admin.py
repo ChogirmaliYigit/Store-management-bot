@@ -11,7 +11,7 @@ from states.states import AdminState, UserState
 from filters.admin import IsBotAdminFilter
 from data.config import ADMINS, PULL_COMMAND, RESTART_COMMAND
 from utils.pgtoexcel import export_to_excel
-from utils.extra_datas import write_orders_to_excel
+from utils.extra_datas import write_orders_to_excel, remove_files_by_pattern
 from utils.notify_admins import logging_to_admin
 
 router = Router()
@@ -185,3 +185,31 @@ async def update_server(message: types.Message):
         await update_server_service(PULL_COMMAND, RESTART_COMMAND)
     except Exception as error:
         await logging_to_admin(f"Error while updating the server: {error}")
+
+
+@router.message(Command("unwritten_orders"), IsBotAdminFilter(ADMINS))
+async def get_unwritten_orders(message: types.Message):
+    orders = await db.select_all_unwritten_orders()
+    file_path = f"data/unwritten_orders.xlsx"
+
+    try:
+        if orders:
+            await message.answer_document(await write_orders_to_excel(orders, file_path))
+        else:
+            await message.answer("There is no orders which has not written to sheets")
+    except Exception as excel_error:
+        await message.answer("Excel faylga yozishda xatolik yuz berdi.")
+        await logging_to_admin(f"Excel error: {str(excel_error)}")
+
+
+@router.message(Command("delete_files"), IsBotAdminFilter(ADMINS))
+async def delete_files(message: types.Message):
+    """
+    To delete some files which in the `data` and `backend` directories
+    """
+    result = remove_files_by_pattern("data", ["*.xlsx"]).strip()
+    result += f"\n{remove_files_by_pattern('backend', ['*.db', '*.sql'])}"
+    result = result.strip()
+    if not result:
+        result = "There is no files to remove"
+    await message.answer(result)

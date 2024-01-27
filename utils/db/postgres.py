@@ -102,7 +102,14 @@ class Database:
     async def select_unwritten_order(self):
         return await self.execute(
             "SELECT * FROM orders WHERE is_written_to_sheet=False AND client_products NOT LIKE '%test%' LIMIT 1",
-            fetchrow=True)
+            fetchrow=True
+        )
+
+    async def select_all_unwritten_orders(self):
+        return await self.execute(
+            "SELECT * FROM orders WHERE is_written_to_sheet=False AND client_products NOT LIKE '%test%'",
+            fetch=True
+        )
 
     async def mark_order_as_written(self, order_id):
         sql = "UPDATE orders SET is_written_to_sheet=True WHERE id=$1 and is_written_to_sheet=False"
