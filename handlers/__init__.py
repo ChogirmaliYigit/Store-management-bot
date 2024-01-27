@@ -1,4 +1,6 @@
 from aiogram import Router
+from filters import IsBotAdminFilter
+from data.config import ADMINS
 
 
 def setup_routers() -> Router:
@@ -7,6 +9,8 @@ def setup_routers() -> Router:
     from .channels import post
 
     router = Router()
+
+    admin.router.message.filter(IsBotAdminFilter(ADMINS))
 
     router.include_routers(
         admin.router,

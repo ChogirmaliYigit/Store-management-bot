@@ -8,8 +8,7 @@ from loader import db, bot, update_server_service
 from keyboards.inline.buttons import are_you_sure_markup, get_admins_markup
 from keyboards.reply.buttons import area_markup
 from states.states import AdminState, UserState
-from filters.admin import IsBotAdminFilter
-from data.config import ADMINS, PULL_COMMAND, RESTART_COMMAND
+from data.config import PULL_COMMAND, RESTART_COMMAND
 from utils.pgtoexcel import export_to_excel
 from utils.extra_datas import write_orders_to_excel, remove_files_by_pattern
 from utils.notify_admins import logging_to_admin
@@ -17,7 +16,7 @@ from utils.notify_admins import logging_to_admin
 router = Router()
 
 
-@router.message(Command('allusers'), IsBotAdminFilter(ADMINS))
+@router.message(Command('allusers'))
 async def get_all_users(message: types.Message):
     users = await db.select_all_users()
 
@@ -27,13 +26,13 @@ async def get_all_users(message: types.Message):
     await message.answer_document(types.input_file.FSInputFile(file_path))
 
 
-@router.message(Command('reklama'), IsBotAdminFilter(ADMINS))
+@router.message(Command('reklama'))
 async def ask_ad_content(message: types.Message, state: FSMContext):
     await message.answer("Reklama uchun post yuboring")
     await state.set_state(AdminState.ask_ad_content)
 
 
-@router.message(AdminState.ask_ad_content, IsBotAdminFilter(ADMINS))
+@router.message(AdminState.ask_ad_content)
 async def send_ad_to_users(message: types.Message, state: FSMContext):
     users = await db.select_all_users()
     count = 0
@@ -49,14 +48,14 @@ async def send_ad_to_users(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(Command('cleandb'), IsBotAdminFilter(ADMINS))
+@router.message(Command('cleandb'))
 async def ask_are_you_sure(message: types.Message, state: FSMContext):
     msg = await message.reply("Haqiqatdan ham bazani tozalab yubormoqchimisiz?", reply_markup=are_you_sure_markup)
     await state.update_data(msg_id=msg.message_id)
     await state.set_state(AdminState.are_you_sure)
 
 
-@router.callback_query(AdminState.are_you_sure, IsBotAdminFilter(ADMINS))
+@router.callback_query(AdminState.are_you_sure)
 async def clean_db(call: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     msg_id = data.get('msg_id')
@@ -70,13 +69,13 @@ async def clean_db(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
 
 
-@router.message(Command("adminlar"), IsBotAdminFilter(ADMINS))
+@router.message(Command("adminlar"))
 async def admins(message: types.Message, state: FSMContext):
     await message.answer("Adminlar ro'yxati 👇", reply_markup=await get_admins_markup())
     await state.set_state(AdminState.admins)
 
 
-@router.callback_query(AdminState.admins, IsBotAdminFilter(ADMINS))
+@router.callback_query(AdminState.admins)
 async def admins_detailed(call: types.CallbackQuery, state: FSMContext):
     if call.data == "add":
         await call.message.delete()
@@ -95,7 +94,7 @@ async def admins_detailed(call: types.CallbackQuery, state: FSMContext):
         await state.set_state(UserState.area)
 
 
-@router.message(AdminState.admins_get_login, IsBotAdminFilter(ADMINS))
+@router.message(AdminState.admins_get_login)
 async def get_admin_login(message: types.Message, state: FSMContext):
     login = await db.check_login(message.text)
     if login:
@@ -106,7 +105,7 @@ async def get_admin_login(message: types.Message, state: FSMContext):
         await state.set_state(AdminState.admins_get_password)
 
 
-@router.message(AdminState.admins_get_password, IsBotAdminFilter(ADMINS))
+@router.message(AdminState.admins_get_password)
 async def get_admin_password(message: types.Message, state: FSMContext):
     await state.update_data({"admin_password": message.text})
     await message.answer("Adminning telegram ID'sini kiriting.\n\n<b>ID ni olish uchun @getmy_idbot ga kirib start "
@@ -130,7 +129,7 @@ async def get_admin_telegram_id(message: types.Message, state: FSMContext):
     await state.set_state(AdminState.admins)
 
 
-@router.message(F.text.startswith('/excel'), IsBotAdminFilter(ADMINS))
+@router.message(F.text.startswith('/excel'))
 async def get_excel_file(message: types.Message):
     if len(str(message.text)) > 6:
         month = str(message.text).split()[1].split("-")[0]
@@ -152,7 +151,7 @@ async def get_excel_file(message: types.Message):
         await logging_to_admin(f"Excel error: {str(excel_error)}")
 
 
-@router.message(Command("excel_full"), IsBotAdminFilter(ADMINS))
+@router.message(Command("excel_full"))
 async def get_excel_file(message: types.Message):
     orders = await db.select_all_orders()
     file_path = f"data/buyurtmalar_toliq.xlsx"
@@ -164,7 +163,7 @@ async def get_excel_file(message: types.Message):
         await logging_to_admin(f"Excel error: {str(excel_error)}")
 
 
-@router.message(Command("dbdata"), IsBotAdminFilter(ADMINS))
+@router.message(Command("dbdata"))
 async def send_db(message: types.Message):
     file_path = "backend/data.db"
     try:
@@ -179,7 +178,7 @@ async def send_db(message: types.Message):
         await logging_to_admin(f"Data sending error {file_path}: {str(excel_error)}")
 
 
-@router.message(Command("update_server"), IsBotAdminFilter(ADMINS))
+@router.message(Command("update_server"))
 async def update_server(message: types.Message):
     try:
         await update_server_service(PULL_COMMAND, RESTART_COMMAND)
@@ -187,7 +186,7 @@ async def update_server(message: types.Message):
         await logging_to_admin(f"Error while updating the server: {error}")
 
 
-@router.message(Command("unwritten_orders"), IsBotAdminFilter(ADMINS))
+@router.message(Command("unwritten_orders"))
 async def get_unwritten_orders(message: types.Message):
     orders = await db.select_all_unwritten_orders()
     file_path = f"data/unwritten_orders.xlsx"
@@ -202,7 +201,7 @@ async def get_unwritten_orders(message: types.Message):
         await logging_to_admin(f"Excel error: {str(excel_error)}")
 
 
-@router.message(Command("delete_files"), IsBotAdminFilter(ADMINS))
+@router.message(Command("delete_files"))
 async def delete_files(message: types.Message):
     """
     To delete some files which in the `data` and `backend` directories
