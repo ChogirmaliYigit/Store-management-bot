@@ -60,7 +60,7 @@ async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot, scheduler
     await on_startup_notify(bot=bot)
     await set_default_commands(bot=bot)
 
-    scheduler.add_job(write_order_to_sheets, 'interval', seconds=2)
+    scheduler.add_job(write_order_to_sheets, 'interval', seconds=20)
     scheduler.start()
 
 
