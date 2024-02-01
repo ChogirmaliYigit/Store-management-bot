@@ -146,6 +146,7 @@ class Database:
         sql = "SELECT * FROM orders WHERE employee = $1 AND created_at >= $2 AND created_at < $3"
         return await self.execute(
             sql,
+            employee,
             current_month_start,
             next_month_start - timedelta(microseconds=1),
             fetch=True
