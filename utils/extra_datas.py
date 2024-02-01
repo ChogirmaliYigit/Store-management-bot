@@ -252,7 +252,7 @@ async def write_sheet_statistics(month: int = None, year: int = None):
         employees_text = ""
         for employee, orders_count in employees.items():
             employee_revenue = 0
-            for employee_order in await db.select_orders_by_employee(employee):
+            for employee_order in await db.select_monthly_orders_by_employee(employee, month=month, year=year):
                 price = str(employee_order.get("client_products_price", ""))
                 if price.isdigit():
                     price = price.replace(" ", "").replace(".", "").replace(",", "")

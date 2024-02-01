@@ -133,11 +133,22 @@ class Database:
             fetch=True
         )
 
-    async def select_orders_by_employee(self, employee: str):
+    async def select_monthly_orders_by_employee(self, employee: str, month: str = None, year: str = None):
+        if month and year:
+            current_month_start = datetime(
+                year=int(year), month=int(month), day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+        else:
+            current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        _, last_day = calendar.monthrange(current_month_start.year, current_month_start.month)
+        next_month_start = (current_month_start + timedelta(days=last_day)).replace(day=1)
+
+        sql = "SELECT * FROM orders WHERE employee = $1 AND created_at >= $2 AND created_at < $3"
         return await self.execute(
-            "SELECT * FROM orders WHERE employee = $1",
-            employee,
-            fetch=True,
+            sql,
+            current_month_start,
+            next_month_start - timedelta(microseconds=1),
+            fetch=True
         )
 
     async def select_all_users(self):
