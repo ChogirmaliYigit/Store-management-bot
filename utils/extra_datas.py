@@ -240,7 +240,7 @@ async def write_sheet_statistics(month: int = None, year: int = None):
             try:
                 price = str(order.get("client_products_price", ""))
                 if price.isdigit():
-                    price = price.replace(" ", "").replace(".", "")
+                    price = price.replace(" ", "").replace(".", "").replace(",", "")
                     total_price += int(price)
             except Exception as e:
                 await logging_to_admin(f"Error while calculating total order price: {e.__class__.__name__}: {e}")
@@ -251,16 +251,22 @@ async def write_sheet_statistics(month: int = None, year: int = None):
 
         employees_text = ""
         for employee, orders_count in employees.items():
-            employees_text += f"{employee.title()}: {orders_count} ta\n"
+            employee_revenue = 0
+            for employee_order in await db.select_orders_by_employee(employee):
+                price = str(employee_order.get("client_products_price", ""))
+                if price.isdigit():
+                    price = price.replace(" ", "").replace(".", "").replace(",", "")
+                    employee_revenue += int(price)
+            employees_text += f"{employee.title()}: {orders_count} ta buyurtma: {employee_revenue} so'm\n"
 
         if orders:
             start_index = int(next_available_row(sheet)) + 10
 
-            sheet.merge_cells(name=f"A{start_index}:B{start_index+1}")
+            sheet.merge_cells(name=f"A{start_index}:C{start_index}")
             sheet.update(f"A{start_index}", f"Umumiy summa: {total_price}")
 
             start_index += 2
-            sheet.merge_cells(name=f"A{start_index}:B{start_index + 1}")
+            sheet.merge_cells(name=f"A{start_index}:C{start_index + 5}")
             sheet.update(f"A{start_index}", f"Buyurtma qabul qiluvchilar:\n{employees_text.strip()}")
 
 

@@ -133,6 +133,13 @@ class Database:
             fetch=True
         )
 
+    async def select_orders_by_employee(self, employee: str):
+        return await self.execute(
+            "SELECT * FROM orders WHERE employee = $1",
+            employee,
+            fetch=True,
+        )
+
     async def select_all_users(self):
         sql = "SELECT * FROM Users"
         return await self.execute(sql, fetch=True)
