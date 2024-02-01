@@ -39,7 +39,8 @@ def get_address_by_location(latitude, longitude):
 
 
 def get_spreadsheet():
-    spreadsheet_url = env.str("SHEET_URL")
+    # TODO: env.str("SHEET_URL")
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
     scope = [
         "https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive",
