@@ -3,8 +3,9 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.middlewares.request_logging import logger
 from loader import db
-from utils.extra_datas import write_order_to_sheets
+from utils.extra_datas import write_order_to_sheets, write_sheet_statistics
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 
 def setup_handlers(dispatcher: Dispatcher) -> None:
@@ -61,6 +62,10 @@ async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot, scheduler
     await set_default_commands(bot=bot)
 
     scheduler.add_job(write_order_to_sheets, 'interval', seconds=20)
+    scheduler.add_job(
+        write_sheet_statistics,
+        trigger=CronTrigger(day='1', hour='0', minute='0')
+    )
     scheduler.start()
 
 

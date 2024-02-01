@@ -3,6 +3,9 @@ import fnmatch
 import ssl
 import certifi
 import gspread
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from environs import Env
 from aiogram.fsm.context import FSMContext
 from geopy.geocoders import Nominatim
 from oauth2client.service_account import ServiceAccountCredentials
@@ -12,6 +15,9 @@ from utils.pgtoexcel import export_to_excel
 from loader import db
 
 ESCAPE_CHARS_MARKDOWN = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+
+env = Env()
+env.read_env()
 
 
 def make_title(title):
@@ -33,7 +39,7 @@ def get_address_by_location(latitude, longitude):
 
 
 def get_spreadsheet():
-    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1-nOg35PRZqXc2DsR-I_vGEZl0Bsm1erXIyjxcWo8JHs/edit"
+    spreadsheet_url = env.str("SHEET_URL")
     scope = [
         "https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive",
@@ -187,7 +193,8 @@ async def write_order_to_sheets():
             try:
                 sheet = spreadsheet.worksheet(sheet_name)
             except Exception as err:
-                await logging_to_admin(f"Sheets error while getting sheet by name: {str(err)}")
+                await logging_to_admin(f"Sheets error while getting sheet by name: "
+                                       f"{err.__class__.__name__}: {str(err)}")
             if not sheet:
                 sheet = spreadsheet.worksheet("Example").duplicate(new_sheet_name=sheet_name)
             start_index = int(next_available_row(sheet))
@@ -199,10 +206,61 @@ async def write_order_to_sheets():
             sheet.update(f"F{start_index}", order.get("delivery_type"))
             sheet.update(f"G{start_index}", order.get("client_products_price"))
             sheet.update(f"H{start_index}", order.get("client_social_network"))
-            await db.mark_order_as_written(order.get("id"))
             sheet.update(f"I{start_index}", order.get("employee"))
+            await db.mark_order_as_written(order.get("id"))
         except Exception as sheets_error:
-            await logging_to_admin(f"Sheets error: {str(sheets_error)}\n\nOrder ID: {order.get('id')}")
+            await logging_to_admin(f"Sheets error: {sheets_error.__class__.__name__}: {str(sheets_error)}\n"
+                                   f"\nOrder ID: {order.get('id')}")
+
+
+async def write_sheet_statistics(month: int = None, year: int = None):
+    today = datetime.now()
+    previous_month = today - relativedelta(months=1)
+    if not month:
+        month = previous_month.month
+    if not year:
+        year = previous_month.year
+    spreadsheet = get_spreadsheet()
+    sheet = None
+    sheet_name = f"{month}-{year}"
+    if 1 <= month <= 9:
+        sheet_name = f"0{sheet_name}"
+    try:
+        sheet = spreadsheet.worksheet(sheet_name)
+    except Exception as err:
+        await logging_to_admin(f"Sheets error while getting sheet by name: "
+                               f"{err.__class__.__name__}: {str(err)}")
+
+    if sheet:
+        orders = await db.select_monthly_orders(month=month, year=year)
+        total_price = 0
+        employees = {}
+        for order in orders:
+            try:
+                price = str(order.get("client_products_price", ""))
+                if price.isdigit():
+                    price = price.replace(" ", "").replace(".", "")
+                    total_price += int(price)
+            except Exception as e:
+                await logging_to_admin(f"Error while calculating total order price: {e.__class__.__name__}: {e}")
+            if employees.get(order.get("employee", None), None):
+                employees[order.get("employee")] += 1
+            else:
+                employees[order.get("employee")] = 1
+
+        employees_text = ""
+        for employee, orders_count in employees.items():
+            employees_text += f"{employee.title()}: {orders_count} ta\n"
+
+        if orders:
+            start_index = int(next_available_row(sheet)) + 10
+
+            sheet.merge_cells(name=f"A{start_index}:B{start_index+1}")
+            sheet.update(f"A{start_index}", f"Umumiy summa: {total_price}")
+
+            start_index += 2
+            sheet.merge_cells(name=f"A{start_index}:B{start_index + 1}")
+            sheet.update(f"A{start_index}", f"Buyurtma qabul qiluvchilar:\n{employees_text.strip()}")
 
 
 def get_files_in_directory(directory_path):

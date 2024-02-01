@@ -10,7 +10,7 @@ from keyboards.reply.buttons import area_markup
 from states.states import AdminState, UserState
 from data.config import PULL_COMMAND, RESTART_COMMAND
 from utils.pgtoexcel import export_to_excel
-from utils.extra_datas import write_orders_to_excel, remove_files_by_pattern
+from utils.extra_datas import write_orders_to_excel, remove_files_by_pattern, write_sheet_statistics
 from utils.notify_admins import logging_to_admin
 
 router = Router()
@@ -212,3 +212,14 @@ async def delete_files(message: types.Message):
     if not result:
         result = "There is no files to remove"
     await message.answer(result)
+
+
+@router.message(Command("sheets_stats"))
+async def write_sheet_stats(message: types.Message):
+    try:
+        month = int(message.text.split()[1].split('-')[0])
+        year = int(message.text.split()[1].split('-')[1])
+        await write_sheet_statistics(month, year)
+        await message.answer("Successfully written")
+    except Exception as e:
+        await logging_to_admin(f"Error while writing stats to sheets: {e.__class__.__name__}: {e}")
