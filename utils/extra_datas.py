@@ -286,7 +286,7 @@ async def write_sheet_statistics(month: int = None, year: int = None):
             sheet.merge_cells(name=f"A{start_index}:C{start_index + len(employees) + 2}")
             sheet.update(f"A{start_index}", f"Buyurtma qabul qiluvchilar:\n{employees_text.strip()}")
 
-            start_index += 7
+            start_index += len(platform_orders) + 4
             sheet.merge_cells(name=f"A{start_index}:C{start_index + len(platform_orders) + 2}")
             sheet.update(f"A{start_index}", f"Buyurtmalar:\n{platform_orders_text.strip()}")
 
