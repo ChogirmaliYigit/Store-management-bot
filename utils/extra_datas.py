@@ -236,6 +236,7 @@ async def write_sheet_statistics(month: int = None, year: int = None):
         orders = await db.select_monthly_orders(month=month, year=year)
         total_price = 0
         employees = {}
+        platform_orders = {}
         for order in orders:
             try:
                 price = str(order.get("client_products_price", ""))
@@ -244,10 +245,21 @@ async def write_sheet_statistics(month: int = None, year: int = None):
                     total_price += int(price)
             except Exception as e:
                 await logging_to_admin(f"Error while calculating total order price: {e.__class__.__name__}: {e}")
+
             if employees.get(order.get("employee", None), None):
                 employees[order.get("employee")] += 1
             else:
                 employees[order.get("employee")] = 1
+
+            if platform_orders.get(order.get("client_social_network", None), {}):
+                platform_orders[order.get("client_social_network")]["orders_count"] += 1
+            else:
+                platform_orders[order.get("client_social_network")] = {"orders_count": 1, "revenue": 0}
+
+            revenue = str(order.get("client_products_price", ""))
+            if revenue.isdigit():
+                revenue = revenue.replace(" ", "").replace(".", "").replace(",", "")
+                platform_orders[order.get("client_social_network")]["revenue"] += int(revenue)
 
         employees_text = ""
         for employee, orders_count in employees.items():
@@ -259,6 +271,11 @@ async def write_sheet_statistics(month: int = None, year: int = None):
                     employee_revenue += int(price)
             employees_text += f"{employee.title()}: {orders_count} ta buyurtma: {employee_revenue} so'm\n"
 
+        platform_orders_text = ""
+        for platform, order_detail in platform_orders.items():
+            platform_orders_text += (f"{platform.title()}: "
+                                     f"{order_detail.get('orders_count')} ta - {order_detail.get('revenue')} so'm\n")
+
         if orders:
             start_index = int(next_available_row(sheet)) + 10
 
@@ -268,6 +285,10 @@ async def write_sheet_statistics(month: int = None, year: int = None):
             start_index += 2
             sheet.merge_cells(name=f"A{start_index}:C{start_index + 5}")
             sheet.update(f"A{start_index}", f"Buyurtma qabul qiluvchilar:\n{employees_text.strip()}")
+
+            start_index += 2
+            sheet.merge_cells(name=f"A{start_index}:C{start_index + 5}")
+            sheet.update(f"A{start_index}", f"Buyurtmalar:\n{platform_orders_text.strip()}")
 
 
 def get_files_in_directory(directory_path):
